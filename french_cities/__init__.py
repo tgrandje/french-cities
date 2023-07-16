@@ -5,9 +5,9 @@ from pynsee.utils import clear_all_cache
 from pynsee.utils.init_conn import init_conn
 import os
 
-from french_cities.city_finder import find_city
-from french_cities.departement_finder import process_departements
-from french_cities.vintage import set_vintage
+# from french_cities.city_finder import find_city
+# from french_cities.departement_finder import process_departements
+# from french_cities.vintage import set_vintage
 
 load_dotenv()
 
