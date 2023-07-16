@@ -59,7 +59,7 @@ class test_find_city(TestCase):
                     "location": "Erreur adresse Lille/Lambersart",
                     "dep": "59",
                     "city": "Lille",
-                    "address": "11 avenue Pasteur",
+                    "address": "199 avenue Pasteur",
                     "postcode": "59000",
                     "target": "59328",
                 },
@@ -104,11 +104,11 @@ class test_find_city(TestCase):
     def test_shape(self):
         assert (
             np.array(self.output.shape)
-            == (np.array(self.input.shape) + np.array([1, 0]))
+            == (np.array(self.input.shape) + np.array([0, 1]))
         ).all()
 
     def test_columns(self):
-        assert set(self.output.columns) == (self.input.columns | {"insee_com"})
+        assert set(self.output.columns) == (set(self.input.columns) | {"insee_com"})
 
     def test_indexes(self):
         assert (self.input.index == self.output.index).all()
