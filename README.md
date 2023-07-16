@@ -1,16 +1,37 @@
 # french-cities
-Python toolbox package regarding french cities
+Toolbox on french cities: set vintage, find departments, find cities...
 
 
 # Installation
 
-## Standard
-Pour une installation sur une infrastructure moderne :
-`pip install french-cities[standard]`
+`pip install french-cities`
 
 
-## Legacy
-Do you want french-cities to run on an old CPU (e.g. dating from before 2011)?
-Install `pip install french-cities[legacy]`.
-This will use `polars-lts-cpu` (instead of `polars`) which is compiled without 
-[avx](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions) target features.
+# Usage
+
+## Setting INSEE API keys
+`french-cities` uses `pynsee` under the hood. For it to work, you need to set
+the credentials up. You can set up to four environment variables:
+* insee_key
+* insee_secret, 
+* http_proxy (if accessing web behind a corporate proxy)
+* https_proxy (if accessing web behind a corporate proxy)
+
+Please refer to `pynsee`'s documentation to help configure the API's access.
+
+## Session management
+Note that `pynsee` uses it's own web session. Every Session object you will pass
+to `french-cities` will **NOT** be shared with `pynsee`. This explains the
+possibility to pass a session as an argument to `french-cities` functions,
+even if you had to configure the corporate proxy through environment variables
+for `pynsee`.
+
+## Basic usage
+
+
+#TODO
+docstrings in english
+refacto departement_finder
+methodes __all__
+README
+push to pypi
