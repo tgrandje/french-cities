@@ -19,7 +19,8 @@ from typing import Union
 import numpy as np
 
 from french_cities.vintage import set_vintage
-from french_cities.departement_finder import process_departements
+from french_cities.departement_finder import find_departements
+from french_cities.utils import init_pynsee
 
 
 logger = logging.getLogger(__name__)
@@ -223,6 +224,8 @@ def find_city(
         )
         raise ValueError(msg)
 
+    init_pynsee()
+
     if not session:
         session = CachedSession(allowable_methods=("GET", "POST"))
 
@@ -278,7 +281,7 @@ def find_city(
     # Add dep recognition if not already there, just to check the result's
     # coherence (and NOT to compute city recognition using it!)
     if dep not in components_kept:
-        addresses = process_departements(
+        addresses = find_departements(
             addresses, postcode, dep, postcode, session
         )
 
@@ -324,7 +327,7 @@ def find_city(
         )
 
         # Control results : same department
-        results_api = process_departements(
+        results_api = find_departements(
             results_api, "result_citycode", "result_dep", "insee", session
         )
         ix = results_api[results_api.dep == results_api.result_dep].index
