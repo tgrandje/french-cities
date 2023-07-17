@@ -2,7 +2,7 @@
 name = "french-cities"
 version = "0.1.0a1"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
-authors = ["thomas.grandjean <thomas.grandjean at developpement-durable.gouv.fr>"]
+authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "etalab-2.0"
 readme = "README.md"
 homepage = "https://github.com/tgrandje/french-cities/"
