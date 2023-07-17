@@ -9,6 +9,8 @@ from requests import Session
 from datetime import timedelta
 import logging
 
+from french_cities.utils import init_pynsee
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,26 +19,26 @@ def _process_departements_from_postal(
     df: pd.DataFrame, source: str, alias: str, session: Session = None
 ) -> pd.DataFrame:
     """
-    Méthode statique pour calculer un code département à partir d'un champ
-    (code postal) et ajouter le résultat sous le nom de colonne 'alias'.
-    Utilise la BAN pour interpréter les codes postaux
+    Retrieve departement's code from postoffice code. Adds the result as a new
+    column to dataframe under the label 'alias'. Uses the BAN (Base Adresse
+    Nationale under the hood).
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame contenant des codes postaux
+        DataFrame containing postal codes
     source : str
-        Colonne à utiliser pour calculer les codes département
+        Field containing the postal codes
     alias : str
-        Nom de colonne où stocker le résultat
+        Column to store the departements' codes unto
     session : Session, optional
-        session web. The default is None (and will use a CachedSession with
+        Web session. The default is None (and will use a CachedSession with
         30 days expiration)
 
     Returns
     -------
     df : pd.DataFrame
-        DataFrame enrichi du code département
+        Updated DataFrame with departement's codes
 
     """
 
@@ -74,19 +76,19 @@ def _process_departements_from_insee_code(
     df: pd.DataFrame, source: str, alias: str, session: Session = None
 ) -> pd.DataFrame:
     """
-    Méthode statique pour calculer un code département à partir d'un champ
-    (code commune) et ajouter le résultat sous le nom de colonne 'alias'.
+    Compute departement's codes from official french cities codes (COG INSEE).
+    Adds the result as a new column to dataframe under the label 'alias'.
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame contenant des codes communes
+        DataFrame containing official cities codes
     source : str
-        Colonne à utiliser pour calculer les codes département
+        Field containing the official codes (INSEE COG)
     alias : str
-        Nom de colonne où stocker le résultat
+        Column to store the departements' codes unto
     session : Session, optional
-        session web. The default is None (and will use a CachedSession with
+        Web session. The default is None (and will use a CachedSession with
         30 days expiration)
         **ignored argument, set only for coherence with
         _process_departements_from_postal**
@@ -94,7 +96,7 @@ def _process_departements_from_insee_code(
     Returns
     -------
     df : pd.DataFrame
-        DataFrame enrichi du code département
+        Updated DataFrame with departement's codes
 
     """
     df[alias] = df[source].str[:2]
@@ -105,7 +107,7 @@ def _process_departements_from_insee_code(
     return df
 
 
-def process_departements(
+def find_departements(
     df: pd.DataFrame,
     source: str,
     alias: str,
@@ -113,23 +115,22 @@ def process_departements(
     session: Session = None,
 ) -> pd.DataFrame:
     """
-    Méthode statique pour calculer un code département à partir d'un champ
-    (code commune ou code postal) et ajouter le résultat sous le nom de colonne
-    'alias'.
+    Compute departement's codes from postal or official codes (ie. INSEE COG)'
+    Adds the result as a new column to dataframe under the label 'alias'.
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame contenant des codes communes
+        DataFrame containing official cities codes
     source : str
-        Colonne à utiliser pour calculer les codes département
+        Field containing the post or official codes
     alias : str
-        Nom de colonne où stocker le résultat
+        Column to store the departements' codes unto
     type_code : str
-        Type de champ soumis à l'algorithme : code commune ('insee') ou
-        code postal ('postcode')
+        Type of codes passed under `alias` label. Should be either 'insee' for
+        official codes or 'postcode' for postal codes.
     session : Session, optional
-        session web. The default is None (and will use a CachedSession with
+        Web session. The default is None (and will use a CachedSession with
         30 days expiration)
 
     Raises
@@ -140,7 +141,7 @@ def process_departements(
     Returns
     -------
     df : pd.DataFrame
-        DataFrame enrichi du code département
+        Updated DataFrame with departement's codes
 
     """
     if type_code not in {"postcode", "insee"}:
@@ -149,6 +150,9 @@ def process_departements(
             f"found {type_code} instead"
         )
         raise ValueError(msg)
+
+    init_pynsee()
+
     df = df.copy()
     if type_code == "postcode":
         func = _process_departements_from_postal
