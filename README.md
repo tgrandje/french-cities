@@ -9,7 +9,7 @@ Toolbox on french cities: set vintage, find departments, find cities...
 
 # Configuration
 
-## Setting INSEE API keys
+## Setting INSEE's API keys
 `french-cities` uses `pynsee` under the hood. For it to work, you need to set
 the credentials up. You can set up to four environment variables:
 * insee_key
@@ -29,14 +29,15 @@ for `pynsee`.
 ## Basic usage
 
 ### Why french-cities?
-There are already available packages and API meant to be used for basic french
-cities management. For instance, `pynsee` uses the INSEE API to retrieve
+There are already available packages and APIs meant to be used for basic french
+cities management. For instance, `pynsee` uses the INSEE's API to retrieve
 multiple data (including departement, region, ...). `geopy` can also retrieve
-cities from their names using the BAN API or the Nominatim geocoding service.
+cities from their names using the BAN (Base Adresse Nationale) API or the 
+Nominatim geocoding service.
 
-The difference is that `french-cities` is primarily meant to perform against whole
-pandas series. It should handle better performance than multiple API calls and
-will optimize the call to each endpoints.
+The difference is that `french-cities` is primarly meant to perform against whole
+pandas series/dataframes. It should handle better performance than multiple API 
+calls and will optimize the call to each endpoints.
 
 ### Retrieve departements' codes
 `french-cities` can retrieve departement's codes from postal codes or official
@@ -46,10 +47,10 @@ Working from postal codes will make use of the BAN (Base Adresse Nationale)
 and should return correct results.
 
 Working from official codes may give wrong results when working on an old
-dataset and with cities which have changed of departments (which is rarely seen
-). This is deliberate : it will use the first characters of the cities' codes 
-(fast process and 99% accurate) isntead of using an API (lengthy process for
-big datasets even if foolproof).
+dataset and with cities which have changed of departments (which is rarely seen). 
+This is deliberate: it will use the first characters of the cities' codes 
+(which is a fast process and 99% accurate) instead of using an API (which is
+lengthy though foolproof).
 
 ```
 from french_cities import find_departements
@@ -88,7 +89,7 @@ older vintage (ie different from the current one) in the case of historic
 splitting of cities (the geographic files are not vintaged yet).
 
 The lexical (postcode, city, address, departement) recognition is based on the
-BAN (base adresse nationale). The algorithm won't collect results underscored
+BAN (base adresse nationale). The algorithm won't collect underscored
 results, but failures may still occure (and will be in accordance with the 
 BAN's failures).
 
@@ -158,11 +159,11 @@ Error may occur for splitted cities as the starting vintage is unknown
 
 In case of a known starting vintage, you can make use of
 INSEE's projection API (with `pynsee`). Note that this might prove slower as
-each row will have to induce a request to the API and that it allows up to 
-30 requests/minute.
+each row will have to induce a request to the API (which allows up to 
+30 requests/minute).
 
-Basically, the algorithm of french-cities will try to see if a given city code
-exists in the desired vintage:
+Basically, the algorithm of `french-cities` will try to see if a given city
+code exists in the desired vintage:
 * if yes, it will be kept (we the aforementionned approximation regarding
 restored cities);
 * if not, it will look in older vintages and make use of INSEE's projection API.
@@ -197,9 +198,7 @@ For a complete documentation on `set_vintage`, please type
 
 
 ## Support
-In case of buges, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
-
-Project built with poetry and pytest.
+In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
 
 ## Author
 Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Durable et Évaluation Environnementale, pôle Promotion de la Connaissance).
