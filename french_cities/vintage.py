@@ -3,17 +3,15 @@
 Created on Fri Jul  7 09:17:12 2023
 """
 import pandas as pd
-from pynsee.localdata import get_new_city
-from requests.exceptions import RequestException
 from functools import partial
 
-from french_cities import init_pynsee
+from french_cities.utils import init_pynsee
 from pynsee.localdata import get_area_list
 from pynsee.localdata import get_ascending_area
 from pynsee.localdata import get_area_projection
 
 
-def get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
+def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
     """
     Download desired vintage of french official geographic code for cities
     and municipal districts from INSEE API; the obtained DataFrame contains
@@ -236,7 +234,7 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
 
     uniques = df[[field]].drop_duplicates(keep="first")
 
-    cities = get_cities_year_full(year, set(uniques[field]))
+    cities = _get_cities_year_full(year, set(uniques[field]))
 
     # Uptodate cities (cities, municipal districts, delegated cities, ...)
     uniques = uniques.merge(cities, left_on=field, right_on="CODE", how="left")
