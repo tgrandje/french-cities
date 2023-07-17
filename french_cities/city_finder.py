@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jul  6 11:38:34 2023
-
-@author: thomas.grandjean
 """
 import pandas as pd
 import io
