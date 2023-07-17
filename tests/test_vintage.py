@@ -7,7 +7,7 @@ from unittest import TestCase
 import pandas as pd
 
 from french_cities.vintage import (
-    get_cities_year_full,
+    _get_cities_year_full,
     _get_cities_year,
     # _get_parents_from_serie,  # -> testé via _get_subareas_year
     _get_subareas_year,
@@ -17,7 +17,7 @@ from french_cities.vintage import (
 
 class test_get_cities_year_full(TestCase):
     def setUp(self):
-        self.cities = get_cities_year_full(2023, look_for=["02077", "02564"])
+        self.cities = _get_cities_year_full(2023, look_for=["02077", "02564"])
 
     def test_class(self):
         assert isinstance(self.cities, pd.DataFrame)
