@@ -2,8 +2,8 @@ name: publish
 
 on: 
   push:
-  pull_request:
-    types: [opened, synchronize]
+    tags:
+      - v**
 
 jobs:
   publish:
