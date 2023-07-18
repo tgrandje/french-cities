@@ -49,7 +49,7 @@ jobs:
       # install pynsee correct branch
       #----------------------------------------------
       - name: Install pynsee branch
-        run: poetry run git+https://github.com/tgrandje/pynsee@feat/add_proj_support
+        run: poetry run pip install git+https://github.com/tgrandje/pynsee@feat/add_proj_support
         
       #----------------------------------------------
       # install your root project, if required
