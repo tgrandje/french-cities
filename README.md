@@ -6,6 +6,10 @@ Toolbox on french cities: set vintage, find departments, find cities...
 
 `pip install french-cities`
 
+Note that at this instant, `pynsee` doesn't support communal projection.
+Please use this command to install the correct branch:
+`pip install git+https://github.com/tgrandje/pynsee@feat/add_proj_support`
+
 
 # Configuration
 
