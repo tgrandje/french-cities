@@ -46,7 +46,7 @@ La différence est que `french-cities` est optimisé pour travailler avec des do
 fournies sous la forme de Series ou DataFrames pandas. Ce package gérera mieux
 de gros volumes de données que ne le feraient des appels multiples à des API.
 
-### Retrieve departements' codes
+### Trouver les départements
 `french-cities` peut retrouver un code département à partir de codes postaux ou 
 de codes communes officiels (COG/INSEE).
 
@@ -83,7 +83,7 @@ Pour une documentation complète sur la fonction `find_departements`, merci
 d'utiliser la commande suivante :
 `help(find_departements)`.
 
-### Retrieve cities' codes
+### Trouver les codes communes
 `french-cities` peut retrouver le code commune à partir de champs multiples.
 Il est capable de détecter certaines erreurs simples dans les champs (jusqu'à 
 une certaine limite).
@@ -162,7 +162,7 @@ Pour une documentation complète sur la fonction `find_city`, merci
 d'utiliser la commande suivante :
 `help(find_city)`.
 
-### Set vintage to cities' codes
+### Projection de codes communes dans un millésime donné
 `french-cities` peut tenter de "projeter" un dataframe dans un millésime donné,
 la date initiale demeurant inconnue (voire inexistante, les cas de fichiers
 "multi-millésimés" étant fréquents dans la vie réelle).
