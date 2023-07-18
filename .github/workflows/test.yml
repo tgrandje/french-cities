@@ -52,6 +52,12 @@ jobs:
         run: poetry run pip install pynsee
         
       #----------------------------------------------
+      # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
+      #----------------------------------------------
+      - name: Add pytest
+        run: poetry run pip install pytest
+        
+      #----------------------------------------------
       # install pynsee correct branch
       #----------------------------------------------
       - name: Install pynsee branch
