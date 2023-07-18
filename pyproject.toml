@@ -4,9 +4,11 @@ version = "0.1.0a1"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "etalab-2.0"
-readme = "README.md"
+readme = ["README.md", "README.fr.md"]
 homepage = "https://github.com/tgrandje/french-cities/"
 repository = "https://github.com/tgrandje/french-cities/"
+documentation = "https://github.com/tgrandje/french-cities/"
+keywords = ["france", "cities"]
 packages = [{include = "french_cities"}]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -15,11 +17,14 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/tgrandje/french-cities/issues"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 requests-cache = "^1.1.0"
 unidecode = "^1.3.6"
-pynsee = { git = "https://github.com/tgrandje/pynsee",  branch = "feat/add_proj_support"}
+pynsee = { git = "https://github.com/tgrandje/pynsee"}
 python-dotenv = "^1.0.0"
 pandas = "^2.0.3"
 geopandas = "^0.13.2"
