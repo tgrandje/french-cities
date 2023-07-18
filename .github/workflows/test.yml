@@ -46,6 +46,12 @@ jobs:
         run: poetry install --no-interaction --no-root --without dev
         
       #----------------------------------------------
+      # remove standard pynsee
+      #----------------------------------------------
+      - name: Remove pynsee branch
+        run: poetry run pip install pynsee
+        
+      #----------------------------------------------
       # install pynsee correct branch
       #----------------------------------------------
       - name: Install pynsee branch
@@ -55,7 +61,7 @@ jobs:
       # install your root project, if required
       #----------------------------------------------
       - name: Install project
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --without dev
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------
