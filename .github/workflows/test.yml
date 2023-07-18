@@ -2,8 +2,8 @@ name: test
 
 on: 
   push:
-    tags:
-      - v**
+  pull_request:
+    types: [opened, synchronize]
 
 jobs:
   test:
