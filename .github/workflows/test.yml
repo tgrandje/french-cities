@@ -67,6 +67,9 @@ jobs:
       #              run test suite
       #----------------------------------------------
       - name: Run tests
+        env:
+          insee_key=${{secrets.INSEE_KEY}}
+          insee_secret=${{secrets.INSEE_SECRET}}
         run: |
           source .venv/bin/activate
           pytest tests/
