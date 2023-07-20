@@ -21,9 +21,84 @@ from tqdm import tqdm
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
 from french_cities.utils import init_pynsee
+from french_cities import LAST_INSEE_HISTO_CITIES
+
+
+# TODO : contrôler la durée de conservation en cache des CachedSession
 
 
 logger = logging.getLogger(__name__)
+
+
+def _get_old_cities_names(
+    year: str,
+    look_for: pd.DataFrame,
+    alias: str = "insee_com",
+    session: Session = None,
+    last_insee_histo_cities: str = LAST_INSEE_HISTO_CITIES,
+) -> pd.DataFrame:
+    # TODO : docstring
+    """
+    Get old city names directly from INSEE's website (hardcoded URL to update
+    annually in french_cities.__init__)
+
+    Parameters
+    ----------
+    year : str
+        Desired vintage
+    look_for : pd.DataFrame
+        DataFrame cities (columns = "city_cleaned", "dep") of cities labels (& dep) we
+        are trying to find a match to
+    session : Session, optional
+        Requests Session to use for web queries to APIs. Note that pynsee
+        (used under the hood for geolocation recognition) uses it's own
+        session. The default is None (and will use a CachedSession with
+        30 days expiration)
+    last_insee_histo_cities : str, optional
+        = LAST_INSEE_HISTO_CITIES
+
+    Returns
+    -------
+    None.
+
+    """
+    if not session:
+        session = CachedSession(allowable_methods=("GET", "POST"))
+
+    r = session.get(last_insee_histo_cities)
+    obj = io.BytesIO(r.content)
+    df = pd.read_csv(obj)
+
+    ix = df[df.DATE_FIN.isnull() == False].index
+    df = df.loc[ix, ["NCC", "COM"]].reset_index(drop=True)
+    df = df.drop_duplicates("NCC")
+
+    df = find_departements(df, source="COM", alias="dep", type_code="insee")
+
+    # fuzzy matching df / look_for
+    match = look_for.merge(df, on="dep", how="inner")
+    match["fuzzy_match"] = match[["city_cleaned", "NCC"]].apply(
+        lambda xy: fuzz.token_set_ratio(*xy), axis=1
+    )
+
+    ix = match[match.fuzzy_match > 80].index
+    match = match.loc[ix].drop("fuzzy_match", axis=1)
+
+    # Keep matches only if there is no ambiguity
+    match = match.drop_duplicates("city_cleaned", keep=False)
+
+    try:
+        year = int(year)
+    except ValueError:
+        year = date.today().year
+    match = set_vintage(match, year, "COM")
+    match = look_for.merge(
+        match[["city_cleaned", "dep", "COM"]],
+        on=["city_cleaned", "dep"],
+        how="left",
+    )
+    match = match.rename({"COM": alias}, axis=1)
+    return match
 
 
 def _find_from_geoloc(
@@ -34,6 +109,7 @@ def _find_from_geoloc(
     y: str = "y",
     field_output: str = "insee_com",
 ) -> pd.DataFrame:
+    # TODO : finir docstring
     """
     Find cities codes from coordinates using a spatial join.
 
@@ -456,7 +532,24 @@ def find_city(
     candidats = ["candidat_0", "best"]
     df[field_output] = combine(df, candidats)
     df = df.drop(
-        [x for x in candidats if x in set(df.columns)] + ["city_cleaned"],
+        [x for x in candidats if x in set(df.columns)],
         axis=1,
     )
+
+    # Where still no results, check directly from INSEE's website for obsolete
+    # cities (using dep & city)
+    ix = df[df[field_output].isnull()].index
+    if len(ix) > 0:
+        missing = df.loc[ix, [dep, "city_cleaned"]]
+        missing = _get_old_cities_names(
+            year, missing, "candidat_missing", session
+        )
+        df = df.merge(missing, on=[dep, "city_cleaned"], how="left")
+
+        candidats = [field_output, "candidat_missing"]
+        df[field_output] = combine(df, candidats)
+        df = df.drop("candidat_missing", axis=1)
+
+    df = df.drop("city_cleaned", axis=1)
+
     return df
