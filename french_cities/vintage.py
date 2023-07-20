@@ -4,6 +4,7 @@ Created on Fri Jul  7 09:17:12 2023
 """
 import pandas as pd
 from functools import partial
+from tqdm import tqdm
 
 from french_cities.utils import init_pynsee
 from pynsee.localdata import get_area_list
@@ -135,7 +136,7 @@ def _get_parents_from_serie(
     date = f"{year}-01-01"
     parents = []
     func = partial(get_ascending_area, area=type_, date=date, type="commune")
-    for code in codes:
+    for code in tqdm(codes, desc="get parent from insee", leave=False):
         parents.append(
             {"CODE": code, "PARENT": func(code=code).loc[0, "code"]}
         )
