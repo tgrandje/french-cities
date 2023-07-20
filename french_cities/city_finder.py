@@ -12,7 +12,7 @@ from unidecode import unidecode
 from pynsee.geodata import get_geodata
 import geopandas as gpd
 from pyproj import Transformer
-from datetime import date
+from datetime import date, timedelta
 from typing import Union
 import numpy as np
 from pebble import ThreadPool
@@ -24,42 +24,47 @@ from french_cities.utils import init_pynsee
 from french_cities import LAST_INSEE_HISTO_CITIES
 
 
-# TODO : contrôler la durée de conservation en cache des CachedSession
-
-
 logger = logging.getLogger(__name__)
 
 
 def _get_old_cities_names(
     year: str,
     look_for: pd.DataFrame,
-    alias: str = "insee_com",
+    alias: str,
     session: Session = None,
     last_insee_histo_cities: str = LAST_INSEE_HISTO_CITIES,
 ) -> pd.DataFrame:
-    # TODO : docstring
     """
     Get old city names directly from INSEE's website (hardcoded URL to update
-    annually in french_cities.__init__)
+    annually in french_cities.__init__) and use fuzzy matching inside the same
+    departement to find best candidates.
 
     Parameters
     ----------
     year : str
-        Desired vintage
+        Desired vintage ("last" or castable to int)
     look_for : pd.DataFrame
-        DataFrame cities (columns = "city_cleaned", "dep") of cities labels (& dep) we
-        are trying to find a match to
+        DataFrame cities (expected columns are "city_cleaned" & "dep") we are
+        trying to find a match to
+    alias : str
+        field to use to store the positive matches' codes into the returned
+        datafram
     session : Session, optional
         Requests Session to use for web queries to APIs. Note that pynsee
         (used under the hood for geolocation recognition) uses it's own
         session. The default is None (and will use a CachedSession with
-        NO expiration)
+        **NO** expiration retrieving the INSEE's complete file)
     last_insee_histo_cities : str, optional
-        = LAST_INSEE_HISTO_CITIES
+        Path to INSEE's "all cities since 1943" file.
+        Defaults to french_cities.LAST_INSEE_HISTO_CITIES
+        Currently found here:
+            https://www.insee.fr/fr/information/6800675#communes_1943
 
     Returns
     -------
-    None.
+    match : pd.DataFrame
+        DataFrame of positive matches (ie look_for + one mor column under the
+        label `alias`)
 
     """
     if not session:
@@ -109,7 +114,6 @@ def _find_from_geoloc(
     y: str = "y",
     field_output: str = "insee_com",
 ) -> pd.DataFrame:
-    # TODO : finir docstring
     """
     Find cities codes from coordinates using a spatial join.
 
@@ -417,8 +421,8 @@ def find_city(
             )
 
         else:
-            # revert to multiple queries of BAN
-            # See issue https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
+            # revert to multiple queries of BAN, see issue here:
+            # https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
             logger.info(
                 f"request BAN with individual requests and {components}..."
             )
