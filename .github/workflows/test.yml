@@ -43,13 +43,13 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root --without dev
+        run: poetry install --no-interaction --without dev
         
       #----------------------------------------------
       # remove standard pynsee
       #----------------------------------------------
       - name: Remove pynsee branch
-        run: poetry run pip install pynsee
+        run: poetry run pip uninstall pynsee
         
       #----------------------------------------------
       # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
@@ -61,13 +61,8 @@ jobs:
       # install pynsee correct branch
       #----------------------------------------------
       - name: Install pynsee branch
-        run: poetry run pip install git+https://github.com/tgrandje/pynsee@feat/add_proj_support
-        
-      #----------------------------------------------
-      # install your root project, if required
-      #----------------------------------------------
-      - name: Install project
-        run: poetry install --no-interaction --without dev
+        run: poetry run pip install git+https://github.com/InseeFrLab/pynsee
+
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------
