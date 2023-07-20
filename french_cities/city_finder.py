@@ -53,7 +53,7 @@ def _get_old_cities_names(
         Requests Session to use for web queries to APIs. Note that pynsee
         (used under the hood for geolocation recognition) uses it's own
         session. The default is None (and will use a CachedSession with
-        30 days expiration)
+        NO expiration)
     last_insee_histo_cities : str, optional
         = LAST_INSEE_HISTO_CITIES
 
@@ -303,7 +303,9 @@ def find_city(
     init_pynsee()
 
     if not session:
-        session = CachedSession(allowable_methods=("GET", "POST"))
+        session = CachedSession(
+            allowable_methods=("GET", "POST"), expire_after=timedelta(days=30)
+        )
 
     if len(necessary3 - columns) == 0 and not epsg:
         logger.warning(
