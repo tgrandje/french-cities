@@ -49,7 +49,7 @@ jobs:
       # remove standard pynsee
       #----------------------------------------------
       - name: Remove pynsee branch
-        run: poetry run pip uninstall pynsee
+        run: poetry run pip uninstall pynsee --no-interaction
         
       #----------------------------------------------
       # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
