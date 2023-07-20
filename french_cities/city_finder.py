@@ -15,6 +15,8 @@ from pyproj import Transformer
 from datetime import date
 from typing import Union
 import numpy as np
+from pebble import ThreadPool
+from tqdm import tqdm
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
@@ -251,24 +253,26 @@ def find_city(
             .apply(unidecode)  # A voir si on conserve
             .str.split(r"\W+")
             .str.join(" ")
+            .str.strip(" ")
+            .str.replace(r" ?CEDEX$", "", regex=True)  # LOOS CEDEX -> LOOS
         )
 
     # Control which configuration can be used
     # Note that the order is relevant here, as this will determine the result's
     # preference
-    to_test_ok = []
-    to_test = [
-        (postcode, "city_cleaned"),
-        (address, postcode, "city_cleaned"),
-        (dep, "city_cleaned"),
-    ]
-    for test_cols in to_test:
+    to_test_ok = {}
+    to_test = {
+        (postcode, "city_cleaned"): "municipality",
+        (address, postcode, "city_cleaned"): None,
+        (dep, "city_cleaned"): "municipality",
+    }
+    for test_cols, type_ban_search in to_test.items():
         try:
             df.loc[:, test_cols]
         except KeyError:
             pass
         else:
-            to_test_ok.append(test_cols)
+            to_test_ok[test_cols] = type_ban_search
 
     components_kept = list(
         {field for test_cols in to_test_ok for field in test_cols}
@@ -286,6 +290,7 @@ def find_city(
     for k, components in enumerate(to_test_ok):
 
         def list_map(df, columns):
+            # contatenation of multiple columns
             "https://stackoverflow.com/questions/39291499#answer-62135779"
             return pd.Series(
                 map(" ".join, df[list(columns)].values.tolist()),
@@ -299,30 +304,102 @@ def find_city(
         )
         addresses = addresses.drop_duplicates(keep="first")
 
-        logger.info(f"request BAN with {components}...")
-        r = session.post(
-            # recherche "en masse" grâce à l'API de la BAN
-            "https://api-adresse.data.gouv.fr/search/csv/",
-            files=[
-                ("data", addresses.to_csv(index=False)),
-                ("result_columns", (None, "full")),
-                ("result_columns", (None, "result_score")),
-                ("result_columns", (None, "result_city")),
-                ("result_columns", (None, "result_citycode")),
-            ],
-        )
-
-        logger.info("résultat obtenu")
-
-        results_api = (
-            pd.read_csv(io.BytesIO(r.content), dtype={"result_citycode": str})
-            .drop_duplicates()
-            .loc[:, ["full", "result_score", "result_city", "result_citycode"]]
-            .merge(
-                addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
-                on="full",
+        if to_test_ok[components] is None:
+            # safe to use the CSV geocoder
+            logger.info(f"request BAN with CSV geocoder and {components}...")
+            r = session.post(
+                # recherche "en masse" grâce à l'API de la BAN
+                "https://api-adresse.data.gouv.fr/search/csv/",
+                files=[
+                    ("data", addresses.to_csv(index=False)),
+                    ("type", (None, "municipality")),
+                    ("result_columns", (None, "full")),
+                    ("result_columns", (None, "result_score")),
+                    ("result_columns", (None, "result_city")),
+                    ("result_columns", (None, "result_citycode")),
+                ],
             )
-        )
+
+            logger.info("résultat obtenu")
+
+            results_api = (
+                pd.read_csv(
+                    io.BytesIO(r.content),
+                    dtype={"dep": str, "result_citycode": str},
+                )
+                .drop_duplicates()
+                .loc[
+                    :,
+                    ["full", "result_score", "result_city", "result_citycode"],
+                ]
+                .merge(
+                    addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+                    on="full",
+                )
+            )
+
+        else:
+            # revert to multiple queries of BAN
+            # See issue https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
+            logger.info(
+                f"request BAN with individual requests and {components}..."
+            )
+
+            def get(x):
+                r = session.get(
+                    # recherche "en masse" grâce à l'API de la BAN
+                    "https://api-adresse.data.gouv.fr/search/",
+                    params={
+                        "q": x,
+                        "type": to_test_ok[components],
+                        "autocomplete": 0,
+                        "limit": 1,
+                    },
+                ).json()
+                features = r["features"]
+                query = r["query"]
+                for dict_ in features:
+                    dict_["properties"].update({"full": query})
+
+                return features
+
+            # Without multithreading:
+            # results_api = gpd.GeoDataFrame.from_features(
+            #     np.array(addresses.full.apply(get).tolist()).flatten()
+            #     )
+
+            args = addresses.full.tolist()
+            results = []
+            with tqdm(
+                total=len(args), desc="Queuing download", leave=False
+            ) as pbar:
+                with ThreadPool(10) as pool:
+                    future = pool.map(get, args)
+                    results_iterator = future.result()
+                    while True:
+                        try:
+                            results.append(next(results_iterator))
+                        except StopIteration:
+                            break
+                        finally:
+                            pbar.update(1)
+
+            results_api = (
+                gpd.GeoDataFrame.from_features(np.array(results).flatten())
+                .loc[:, ["full", "score", "city", "citycode"]]
+                .rename(
+                    {
+                        "score": "result_score",
+                        "city": "result_city",
+                        "citycode": "result_citycode",
+                    },
+                    axis=1,
+                )
+                .merge(
+                    addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+                    on="full",
+                )
+            )
 
         # Control results : same department
         results_api = find_departements(
@@ -360,6 +437,7 @@ def find_city(
         addresses = addresses.merge(results_api, on="full", how="left")
 
     def combine(df: pd.DataFrame, columns: list) -> pd.Series:
+        columns = [x for x in columns if x in set(df.columns)]
         first, *next_ = columns
         s = df[first]
         for field in next_:
@@ -377,5 +455,8 @@ def find_city(
     )
     candidats = ["candidat_0", "best"]
     df[field_output] = combine(df, candidats)
-    df = df.drop(candidats + ["city_cleaned"], axis=1)
+    df = df.drop(
+        [x for x in candidats if x in set(df.columns)] + ["city_cleaned"],
+        axis=1,
+    )
     return df
