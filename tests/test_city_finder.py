@@ -58,7 +58,7 @@ input_df = pd.DataFrame(
             "city": "Lille",
             "address": "199 avenue Pasteur",
             "postcode": "59000",
-            "target": "59328",
+            "target": "59328",  # Lille
         },
         {
             "x": np.nan,
@@ -89,6 +89,16 @@ input_df = pd.DataFrame(
             "address": np.nan,
             "postcode": np.nan,
             "target": "02731",
+        },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Ancienne commune mal formatée",
+            "dep": "59",
+            "city": "Mardyk",
+            "address": np.nan,
+            "postcode": np.nan,
+            "target": "59183",  # Dunkerque
         },
     ],
 )
