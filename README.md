@@ -7,8 +7,13 @@ Toolbox on french cities: set vintage, find departments, find cities...
 `pip install french-cities`
 
 Note that at this instant, `pynsee` doesn't support communal projection.
-Please use this command to install the correct branch:
-`pip install git+https://github.com/tgrandje/pynsee@feat/add_proj_support`
+After installing `french-cities` from pypi, please uninstall pynsee and replace
+it with the current master:
+```
+pip uninstall pynsee
+pip install git+https://github.com/InseeFrLab/pynsee
+```
+
 
 
 # Configuration
@@ -21,7 +26,8 @@ the credentials up. You can set up to four environment variables:
 * http_proxy (if accessing web behind a corporate proxy)
 * https_proxy (if accessing web behind a corporate proxy)
 
-Please refer to `pynsee`'s documentation to help configure the API's access.
+Please refer to [`pynsee`'s documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
+to help configure the API's access.
 
 ## Session management
 Note that `pynsee` uses it's own web session. Every Session object you will pass

@@ -8,9 +8,13 @@ départements ou de communes...
 `pip install french-cities`
 
 Notez qu'à cette heure, `pynsee` ne supporte pas les projections de codes commune. 
-Dans l'immédiat, vous pouvez installer la branche provisoire à l'aide de la 
-commande suivante :
-`pip install git+https://github.com/tgrandje/pynsee@feat/add_proj_support`
+Dans l'immédiat, après avoir installé `french-cities` depuis pypi, il faut donc
+désinstaller `pynsee` puis réinstaller la version master courante depuis son repo 
+github :
+```
+pip uninstall pynsee
+pip install git+https://github.com/InseeFrLab/pynsee
+```
 
 # Configuration
 
@@ -23,8 +27,8 @@ d'environnement :
 * http_proxy (le cas échéant, pour accès web derrière un proxy professionnel)
 * https_proxy (le cas échéant, pour accès web derrière un proxy professionnel)
 
-Merci de se référer à la documentation de `pynsee` pour plus d'information 
-sur les clefs API et la configuration.
+Merci de se référer à [la documentation de `pynsee`](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
+pour plus d'information sur les clefs API et la configuration.
 
 ## Gestion des sessions web
 `pynsee` utilise son propre gestionnaire de session web. 
