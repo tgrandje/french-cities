@@ -153,7 +153,7 @@ def _find_from_geoloc(
                 f"found {year} instead"
             )
 
-    if year not in {str(date.today().year), "last"}:
+    if str(year) not in {str(date.today().year), "last"}:
         logger.warning(
             "As of yet, ADMINEXPRESS can't be fetched with a vintage "
             "setting: the querying of cities using coordinates WILL have "

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "french-cities"
-version = "0.1.0a6"
+version = "0.1.0a7"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "etalab-2.0"

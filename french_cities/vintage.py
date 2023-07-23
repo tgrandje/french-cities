@@ -233,7 +233,10 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
         df = df.rename({field: f"temp_{field}"}, axis=1)
         field = f"temp_{field}"
 
-    uniques = df[[field]].drop_duplicates(keep="first")
+    uniques = df[[field]].drop_duplicates(keep="first").dropna()
+
+    if uniques.empty:
+        return df
 
     cities = _get_cities_year_full(year, set(uniques[field]))
 
