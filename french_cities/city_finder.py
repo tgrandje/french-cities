@@ -355,7 +355,7 @@ def find_city(
     # coherence (and NOT to compute city recognition using it!)
     if dep not in components_kept:
         addresses = find_departements(
-            addresses, postcode, dep, postcode, session
+            addresses, postcode, dep, "postcode", session
         )
 
     for k, components in enumerate(to_test_ok):
