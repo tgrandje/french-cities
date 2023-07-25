@@ -128,7 +128,7 @@ def _process_departements_from_postal(
         )
         result = result.merge(results_cedex, on=source, how="left")
         result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
-        result = result.drop(results_cedex.columns, axis=1)
+        result = result.drop(list(set(results_cedex.columns) - {source,}), axis=1)
 
     logger.info("résultat obtenu")
 
