@@ -60,7 +60,7 @@ jobs:
       #----------------------------------------------
       # add only pytest-cov for tests (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
-      - name: Add pytest
+      - name: Add pytest-cov
         run: poetry run pip install pytest-cov
         
       #----------------------------------------------
