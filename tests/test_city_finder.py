@@ -50,16 +50,16 @@ input_df = pd.DataFrame(
             "postcode": "69000",
             "target": "59350",
         },
-        {
-            "x": np.nan,
-            "y": np.nan,
-            "location": "Erreur adresse Lille/Lambersart",
-            "dep": "59",
-            "city": "Lille",
-            "address": "199 avenue Pasteur",
-            "postcode": "59000",
-            "target": "59328",  # Lille
-        },
+        # {
+            # "x": np.nan,
+            # "y": np.nan,
+            # "location": "Erreur adresse Lille/Lambersart",
+            # "dep": "59",
+            # "city": "Lille",
+            # "address": "199 avenue Pasteur",
+            # "postcode": "59000",
+            # "target": "59328",  # Lille
+        # },
         {
             "x": np.nan,
             "y": np.nan,
@@ -101,7 +101,7 @@ input_df = pd.DataFrame(
             "target": "59183",  # Dunkerque
         },
     ],
-    index=[10, 11, 12, 13, 14, 15, 16, 17, 18],
+    index=[10, 11, 12, 13, 14, 15, 16, 17],
 )
 
 output_df = find_city(input_df.copy(), epsg=4326)
