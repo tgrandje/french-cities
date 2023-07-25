@@ -55,7 +55,13 @@ de gros volumes de données que ne le feraient des appels multiples à des API.
 de codes communes officiels (COG/INSEE).
 
 Travailler à partir de codes postaux entraînera l'utilisation de la BAN (Base
-Adresse Nationale) et devrait fournir des résultats corrects.
+Adresse Nationale) et devrait fournir des résultats corrects. Le cas des codes
+Cedex n'étant que partiellement géré par la BAN, un appel est fait dans un
+second temps à l'[API d'OpenDataSoft](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/api/?flg=fr&q=code%3D68013&lang=fr)
+construite sur la base des [travaux de Christian Quest](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/information/?flg=fr&q=code%3D68013&lang=fr).
+Cette utilisation s'appuie sur un accès freemium non authentifié; l'utilisateur 
+du package est invité à contrôler les conditions générales d'utilisation de l'API auprès du
+fournisseur.
 
 Travailler à partir de codes communes officiels peut entraîner des résultats
 erronés pour des données anciennes, dans le cas de communes ayant changé de

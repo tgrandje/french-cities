@@ -54,7 +54,12 @@ calls and will optimize the call to each endpoints.
 (COG/INSEE) codes. 
 
 Working from postal codes will make use of the BAN (Base Adresse Nationale)
-and should return correct results.
+and should return correct results. The case of "Cedex" codes is only partially
+covered by the BAN, so [OpenDataSoft's API](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/api/?flg=fr&q=code%3D68013&lang=fr),
+constructed upon [Christian Quest works](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/information/?flg=fr&q=code%3D68013&lang=fr).
+This consumes the freemium API and no authentication is included:
+the user of the present package should check the current API's legal terms
+directly on OpenDataSoft's website.
 
 Working from official codes may give wrong results when working on an old
 dataset and with cities which have changed of departments (which is rarely seen). 
