@@ -21,7 +21,8 @@ def _process_departements_from_postal(
     """
     Retrieve departement's code from postoffice code. Adds the result as a new
     column to dataframe under the label 'alias'. Uses the BAN (Base Adresse
-    Nationale under the hood).
+    Nationale under the hood) and OpenDataSoft's freemium API in backoffice (
+    mostly in case of "Cedex" codes)
 
     Parameters
     ----------
@@ -64,6 +65,67 @@ def _process_departements_from_postal(
         result["result_context"].str.split(",", expand=True)[0].str.strip(" ")
     )
     result = result.drop("result_context", axis=1)
+
+    # where code is unknown, use Christian Quest Dataset with Cedex codes and
+    # OpenDataSoft API (v2.1 contrairement à la doc disponible) en Freemium
+    # https://www.data.gouv.fr/fr/datasets/liste-des-cedex/#_
+    # https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/information/?flg=fr&q=code%3D68013&lang=fr
+    def get(x):
+        while True:
+            r = session.get(
+                # recherche "en masse" grâce à l'API de la BAN
+                "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/correspondance-code-cedex-code-insee/records",
+                params={
+                    "select": "insee,nom_dep",
+                    "where": f"code={x}",
+                    "limit": "10",
+                    "offset": "0",
+                    "timezone": "UTC",
+                    "include_links": "false",
+                    "include_app_metas": "false",
+                },
+            )
+            if r.ok:
+                break
+            elif r.status_code == 429:
+                time.sleep(1)
+            else:
+                logger.warning(
+                    f"Error occured on code {x} on OpenDataSoft's API"
+                )
+                return None
+        results = r.json()["results"]
+        for dict_ in results:
+            dict_.update({source: x})
+        return results
+
+    ix = result[result.dep.isnull()].index
+    if len(ix) > 0:
+        logger.info("postal codes unrecognized - maybe Cedex codes")
+        args = result.loc[ix, source].tolist()
+        results_cedex = []
+        with tqdm(
+            total=len(args), desc="Querying OpenDataSoft API", leave=False
+        ) as pbar:
+            with ThreadPool(10) as pool:
+                future = pool.map(get, args)
+                results_iterator = future.result()
+                while True:
+                    try:
+                        this_result = next(results_iterator)
+                        if this_result:
+                            results_cedex += this_result
+                    except StopIteration:
+                        break
+                    finally:
+                        pbar.update(1)
+        results_cedex = pd.DataFrame(results_cedex)
+        results_cedex = _process_departements_from_insee_code(
+            results_cedex, source="insee", alias="dep_cedex", session=session
+        )
+        result = result.merge(results_cedex, on=source, how="left")
+        result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
+        result = result.drop(results_cedex.columns, axis=1)
 
     logger.info("résultat obtenu")
 
