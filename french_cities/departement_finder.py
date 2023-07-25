@@ -8,6 +8,9 @@ from requests_cache import CachedSession
 from requests import Session
 from datetime import timedelta
 import logging
+import time
+from tqdm import tqdm
+from pebble import ThreadPool
 
 from french_cities.utils import init_pynsee
 
