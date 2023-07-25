@@ -8,10 +8,11 @@ from french_cities.departement_finder import find_departements
 
 input_df = pd.DataFrame(
     {
-        "code_postal": ["59800", "97133", "20000"],
-        "code_commune": ["59350", "97701", "2A004"],
-        "communes": ["Lille", "Saint-Barthélémy", "Ajaccio"],
-        "deps": ["59", "977", "2A"],
+        "code_postal": ["59800", "97133", "20000", "68013"],
+        "code_commune": ["59350", "97701", "2A004", "68066"],
+        "communes": ["Lille", "Saint-Barthélémy", "Ajaccio", "Colmar Cedex"],
+        "deps": ["59", "977", "2A", "68"],
+        
     }
 )
 
