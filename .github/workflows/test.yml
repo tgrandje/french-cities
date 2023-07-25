@@ -56,6 +56,13 @@ jobs:
       #----------------------------------------------
       - name: Add pytest
         run: poetry run pip install pytest
+      
+      #----------------------------------------------
+      # add only pytest-cov for tests (not the full dev dependencies to avoid installing spyder)
+      #----------------------------------------------
+      - name: Add pytest
+        run: poetry run pip install pytest-cov
+        pytest-cov
         
       #----------------------------------------------
       # install pynsee correct branch
@@ -70,7 +77,4 @@ jobs:
         env:
           insee_key: ${{secrets.INSEE_KEY}}
           insee_secret: ${{secrets.INSEE_SECRET}}
-        run: |
-          source .venv/bin/activate
-          pytest tests/
-          coverage report
+        run: poetry run pytest --cov
