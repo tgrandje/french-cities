@@ -8,7 +8,7 @@ from french_cities.vintage import set_vintage
 
 load_dotenv()
 
-__version__ = "0.1.0a8"
+__version__ = "0.1.0a9"
 
 
 __all__ = [
