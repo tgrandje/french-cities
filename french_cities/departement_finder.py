@@ -99,7 +99,7 @@ def _process_departements_from_postal(
             dict_.update({source: x})
         return results
 
-    ix = result[result.dep.isnull()].index
+    ix = result[result[alias].isnull()].index
     if len(ix) > 0:
         logger.info("postal codes unrecognized - maybe Cedex codes")
         args = result.loc[ix, source].tolist()
