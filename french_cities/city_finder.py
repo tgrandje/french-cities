@@ -449,11 +449,15 @@ def find_city(
                     results_iterator = future.result()
                     while True:
                         try:
-                            results.append(next(results_iterator))
+                            this_result = next(results_iterator)
+                            if this_result:
+                                results.append(this_result)
                         except StopIteration:
                             break
                         finally:
                             pbar.update(1)
+
+            logger.info("résultat obtenu")
 
             results_api = (
                 gpd.GeoDataFrame.from_features(np.array(results).flatten())
