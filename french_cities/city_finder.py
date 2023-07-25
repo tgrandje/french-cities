@@ -521,8 +521,12 @@ def find_city(
     addresses = addresses.drop("full", axis=1)
     addresses = addresses.drop_duplicates()
 
-    df = df.merge(
-        addresses.replace("", np.nan), how="left", on=components_kept
+    df = (
+        df
+        .reset_index(drop=False)
+        .merge(
+            addresses.replace("", np.nan), how="left", on=components_kept
+        )
     )
     candidats = ["candidat_0", "best"]
     df[field_output] = combine(df, candidats)
@@ -544,5 +548,5 @@ def find_city(
         df = df.drop("candidat_missing", axis=1)
 
     df = df.drop("city_cleaned", axis=1)
-
+    df = df.set_index("index")
     return df

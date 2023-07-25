@@ -101,6 +101,7 @@ input_df = pd.DataFrame(
             "target": "59183",  # Dunkerque
         },
     ],
+    index=[10, 11, 12, 13, 14, 15, 16, 17, 18],
 )
 
 output_df = find_city(input_df.copy(), epsg=4326)
