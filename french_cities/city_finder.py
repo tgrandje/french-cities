@@ -76,10 +76,12 @@ def _fuzzy_match_cities_names(
     )
 
     ix = match_[match_.fuzzy_match > 80].index
-    match_ = match_.loc[ix].drop("fuzzy_match", axis=1)
+    match_ = match_.loc[ix]
 
-    # Keep matches only if there is no ambiguity
-    match_ = match_.drop_duplicates("city_cleaned", keep=False)
+    # Keep matches only best match in case of ambiguity
+    match_ = match_.sort_values("fuzzy_match", ascending=False)
+    match_ = match_.drop_duplicates("city_cleaned", keep="first")
+    match_ = match_.drop("fuzzy_match", axis=1)
 
     try:
         year = int(year)
