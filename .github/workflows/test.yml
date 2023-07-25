@@ -62,7 +62,6 @@ jobs:
       #----------------------------------------------
       - name: Add pytest
         run: poetry run pip install pytest-cov
-        pytest-cov
         
       #----------------------------------------------
       # install pynsee correct branch
