@@ -105,7 +105,7 @@ def _process_departements_from_postal(
     ix = result[result[alias].isnull()].index
     if len(ix) > 0:
         logger.info("postal codes unrecognized - maybe Cedex codes")
-        args = result.loc[ix, source].tolist()
+        args = result.loc[ix, source].dropna().tolist()
         results_cedex = []
         with tqdm(
             total=len(args), desc="Querying OpenDataSoft API", leave=False
