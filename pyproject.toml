@@ -31,6 +31,7 @@ rapidfuzz = "^3.1.1"
 pynsee = "^0.1.4"
 pebble = "^5.0.3"
 tqdm = "^4.65.0"
+importlib-metadata = "^6.8.0"
 
 [tool.poetry.group.dev.dependencies]
 spyder = "^5.4.3"
