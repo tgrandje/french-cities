@@ -50,6 +50,13 @@ jobs:
       #----------------------------------------------
       - name: Install project
         run: poetry install --no-interaction --without dev
+      
+      #----------------------------------------------
+      # config pypi token
+      #----------------------------------------------
+      - name: Set pypi token
+        run: poetry config pypi-token.pypi ${{secrets.PYPI_TOKEN}}
+      
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------
