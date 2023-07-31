@@ -51,14 +51,14 @@ input_df = pd.DataFrame(
             "target": "59350",
         },
         # {
-            # "x": np.nan,
-            # "y": np.nan,
-            # "location": "Erreur adresse Lille/Lambersart",
-            # "dep": "59",
-            # "city": "Lille",
-            # "address": "199 avenue Pasteur",
-            # "postcode": "59000",
-            # "target": "59328",  # Lille
+        # "x": np.nan,
+        # "y": np.nan,
+        # "location": "Erreur adresse Lille/Lambersart",
+        # "dep": "59",
+        # "city": "Lille",
+        # "address": "199 avenue Pasteur",
+        # "postcode": "59000",
+        # "target": "59328",  # Lille
         # },
         {
             "x": np.nan,
@@ -100,8 +100,38 @@ input_df = pd.DataFrame(
             "postcode": np.nan,
             "target": "59183",  # Dunkerque
         },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Homonyme rue/commune",
+            "dep": "59",
+            "city": "Bouchain",
+            "address": np.nan,
+            "postcode": np.nan,
+            "target": "59092",
+        },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Homonyme rue/commune",
+            "dep": "59",
+            "city": "Loos",
+            "address": np.nan,
+            "postcode": np.nan,
+            "target": "59360",
+        },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Homonyme rue/commune",
+            "dep": "62",
+            "city": "Isbergues",
+            "address": np.nan,
+            "postcode": np.nan,
+            "target": "62473",
+        },
     ],
-    index=[10, 11, 12, 13, 14, 15, 16, 17],
+    index=[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
 )
 
 output_df = find_city(input_df.copy(), epsg=4326)

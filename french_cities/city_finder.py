@@ -8,6 +8,7 @@ import logging
 from requests_cache import CachedSession
 from requests import Session
 from rapidfuzz import fuzz
+from rapidfuzz.process import cdist
 from unidecode import unidecode
 from pynsee.geodata import get_geodata
 from pynsee.localdata import get_area_list
@@ -16,8 +17,6 @@ from pyproj import Transformer
 from datetime import date, timedelta
 from typing import Union
 import numpy as np
-from pebble import ThreadPool
-from tqdm import tqdm
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
@@ -69,32 +68,33 @@ def _fuzzy_match_cities_names(
     df = df.drop_duplicates(["TITLE_SHORT", "dep"])
     df = df.reset_index(drop=False)
 
-    # fuzzy matching df / look_for
-    match_ = look_for.merge(df, on="dep", how="inner")
-    match_["fuzzy_match"] = match_[["city_cleaned", "TITLE_SHORT"]].apply(
-        lambda xy: fuzz.token_set_ratio(*xy), axis=1
-    )
-
-    ix = match_[match_.fuzzy_match > 80].index
-    match_ = match_.loc[ix]
-
-    # Keep matches only best match in case of ambiguity
-    match_ = match_.sort_values("fuzzy_match", ascending=False)
-    match_ = match_.drop_duplicates("city_cleaned", keep="first")
-    match_ = match_.drop("fuzzy_match", axis=1)
+    results = []
+    for dep in look_for["dep"].unique():
+        ix1 = look_for[look_for.dep == dep].index
+        ix2 = df[df.dep == dep].index
+        match_ = pd.DataFrame(
+            cdist(
+                look_for.loc[ix1, "city_cleaned"],
+                df.loc[ix2, "TITLE_SHORT"],
+                score_cutoff=80,
+                workers=-1,
+            ),
+            index=ix1,
+            columns=df.loc[ix2, "CODE"],
+        ).replace(0, np.nan)
+        results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
+    results = pd.concat(results, ignore_index=False).sort_index()
 
     try:
         year = int(year)
     except ValueError:
         year = date.today().year
-    match_ = set_vintage(match_, year, "CODE")
-    match_ = look_for.merge(
-        match_[["city_cleaned", "dep", "CODE"]],
-        on=["city_cleaned", "dep"],
-        how="left",
-    )
-    match_ = match_.rename({"CODE": alias}, axis=1)
-    return match_
+    results = set_vintage(results.to_frame("CODE"), year, "CODE")
+
+    results = look_for.join(results)
+
+    results = results.rename({"CODE": alias}, axis=1)
+    return results
 
 
 def _find_from_geoloc(
@@ -305,7 +305,7 @@ def find_city(
     if len(necessary3 - columns) == 0 and not epsg:
         logger.warning(
             "x and y columns where found, but a valid EPSG projection was not "
-            "set : geolocation will not be performed"
+            "set: geolocation will not be performed"
         )
 
     # User geolocation first
@@ -314,10 +314,14 @@ def find_city(
         df = _find_from_geoloc(epsg, df, year, x, y, field_output).rename(
             {field_output: "candidat_0"}, axis=1
         )
+    try:
+        df["candidat_0"]
+    except KeyError:
+        df = df.assign(candidat_0=np.nan)
 
     # Preprocess cities names
     if city in set(df.columns):
-        ix = df[df[city].notnull()].index
+        ix = df[(df[city].notnull()) & (df.candidat_0.isnull())].index
         df.loc[ix, "city_cleaned"] = (
             df.loc[ix, city]
             .str.replace(
@@ -334,25 +338,25 @@ def find_city(
     # Control which configuration can be used
     # Note that the order is relevant here, as this will determine the result's
     # preference
-    to_test_ok = {}
-    to_test = {
-        (postcode, "city_cleaned"): "municipality",
-        (address, postcode, "city_cleaned"): None,
-        (dep, "city_cleaned"): "municipality",
-    }
-    for test_cols, type_ban_search in to_test.items():
+    to_test_ok = []
+    to_test = [
+        (postcode, "city_cleaned"),
+        (address, postcode, "city_cleaned"),
+        (dep, "city_cleaned"),
+    ]
+    for test_cols in to_test:
         try:
             df.loc[:, test_cols]
         except KeyError:
             pass
         else:
-            to_test_ok[test_cols] = type_ban_search
+            to_test_ok.append(test_cols)
 
     components_kept = list(
         {field for test_cols in to_test_ok for field in test_cols}
     )
 
-    addresses = df.loc[:, components_kept].drop_duplicates().fillna("")
+    addresses = df.loc[:, components_kept + ["candidat_0"]]
 
     # Add dep recognition if not already there, just to check the result's
     # coherence (and NOT to compute city recognition using it!)
@@ -362,6 +366,18 @@ def find_city(
         )
 
     for k, components in enumerate(to_test_ok):
+        cols_candidates = [
+            x for x in addresses.columns if x.startswith("candidat_")
+        ]
+
+        ix = addresses[
+            np.all(
+                [addresses[col].isnull() for col in cols_candidates], axis=0
+            )
+        ].index
+
+        temp_addresses = addresses.loc[ix].drop(cols_candidates, axis=1)
+        temp_addresses = temp_addresses.drop_duplicates().fillna("")
 
         def list_map(df, columns):
             # contatenation of multiple columns
@@ -371,113 +387,53 @@ def find_city(
                 index=df.index,
             )
 
+        if "full" in set(temp_addresses.columns):
+            temp_addresses = temp_addresses.drop("full", axis=1)
+        temp_addresses = temp_addresses.join(
+            list_map(temp_addresses.copy(), components).to_frame("full")
+        )
+        temp_addresses = temp_addresses.drop_duplicates(keep="first")
+
         if "full" in set(addresses.columns):
             addresses = addresses.drop("full", axis=1)
         addresses = addresses.join(
-            list_map(addresses.copy(), components).to_frame("full")
+            list_map(addresses.fillna("").copy(), components).to_frame("full")
         )
-        addresses = addresses.drop_duplicates(keep="first")
 
-        if to_test_ok[components] is None:
-            # safe to use the CSV geocoder
-            logger.info(f"request BAN with CSV geocoder and {components}...")
-            r = session.post(
-                # recherche "en masse" grâce à l'API de la BAN
-                "https://api-adresse.data.gouv.fr/search/csv/",
-                files=[
-                    ("data", addresses.to_csv(index=False)),
-                    ("type", (None, "municipality")),
-                    ("result_columns", (None, "full")),
-                    ("result_columns", (None, "result_score")),
-                    ("result_columns", (None, "result_city")),
-                    ("result_columns", (None, "result_citycode")),
-                ],
+        # Use the BAN's CSV geocoder
+        logger.info(f"request BAN with CSV geocoder and {components}...")
+        r = session.post(
+            # recherche "en masse" grâce à l'API de la BAN
+            "https://api-adresse.data.gouv.fr/search/csv/",
+            files=[
+                ("data", temp_addresses.to_csv(index=False)),
+                ("type", (None, "municipality")),
+                ("result_columns", (None, "full")),
+                ("result_columns", (None, "result_score")),
+                ("result_columns", (None, "result_city")),
+                ("result_columns", (None, "result_citycode")),
+            ],
+        )
+
+        logger.info("résultat obtenu")
+
+        results_api = (
+            pd.read_csv(
+                io.BytesIO(r.content),
+                dtype={"dep": str, "result_citycode": str},
             )
-
-            logger.info("résultat obtenu")
-
-            results_api = (
-                pd.read_csv(
-                    io.BytesIO(r.content),
-                    dtype={"dep": str, "result_citycode": str},
-                )
-                .drop_duplicates()
-                .loc[
-                    :,
-                    ["full", "result_score", "result_city", "result_citycode"],
-                ]
-                .merge(
-                    addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
-                    on="full",
-                )
+            .drop_duplicates()
+            .loc[
+                :,
+                ["full", "result_score", "result_city", "result_citycode"],
+            ]
+            .merge(
+                temp_addresses[
+                    [dep, "full", "city_cleaned"]
+                ].drop_duplicates(),
+                on="full",
             )
-
-        else:
-            # revert to multiple queries of BAN, see issue here:
-            # https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
-            logger.info(
-                f"request BAN with individual requests and {components}..."
-            )
-
-            def get(x):
-                r = session.get(
-                    # recherche "en masse" grâce à l'API de la BAN
-                    "https://api-adresse.data.gouv.fr/search/",
-                    params={
-                        "q": x,
-                        "type": to_test_ok[components],
-                        "autocomplete": 0,
-                        "limit": 1,
-                    },
-                ).json()
-                features = r["features"]
-                query = r["query"]
-                for dict_ in features:
-                    dict_["properties"].update({"full": query})
-
-                return features
-
-            # Without multithreading:
-            # results_api = gpd.GeoDataFrame.from_features(
-            #     np.array(addresses.full.apply(get).tolist()).flatten()
-            #     )
-
-            args = addresses.full.tolist()
-            results = []
-            with tqdm(
-                total=len(args), desc="Queuing download", leave=False
-            ) as pbar:
-                with ThreadPool(10) as pool:
-                    future = pool.map(get, args)
-                    results_iterator = future.result()
-                    while True:
-                        try:
-                            this_result = next(results_iterator)
-                            if this_result:
-                                results.append(this_result)
-                        except StopIteration:
-                            break
-                        finally:
-                            pbar.update(1)
-
-            logger.info("résultat obtenu")
-
-            results_api = (
-                gpd.GeoDataFrame.from_features(np.array(results).flatten())
-                .loc[:, ["full", "score", "city", "citycode"]]
-                .rename(
-                    {
-                        "score": "result_score",
-                        "city": "result_city",
-                        "citycode": "result_citycode",
-                    },
-                    axis=1,
-                )
-                .merge(
-                    addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
-                    on="full",
-                )
-            )
+        )
 
         # Control results : same department
         results_api = find_departements(
@@ -522,18 +478,17 @@ def find_city(
             s = s.combine_first(df[field])
         return s
 
+    # Proceed in two steps to keep best result (in case there are results from
+    # geolocation on lines with nothing other than coordinates)
     candidats = [f"candidat_{k+1}" for k in range(len(to_test_ok))]
     addresses["best"] = combine(addresses, candidats)
     addresses = addresses.drop(candidats, axis=1)
     addresses = addresses.drop("full", axis=1)
+    addresses = addresses.drop("candidat_0", axis=1)
     addresses = addresses.drop_duplicates()
 
-    df = (
-        df
-        .reset_index(drop=False)
-        .merge(
-            addresses.replace("", np.nan), how="left", on=components_kept
-        )
+    df = df.reset_index(drop=False).merge(
+        addresses.replace("", np.nan), how="left", on=components_kept
     )
     candidats = ["candidat_0", "best"]
     df[field_output] = combine(df, candidats)
