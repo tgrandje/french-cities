@@ -317,8 +317,9 @@ def find_city(
 
     # Preprocess cities names
     if city in set(df.columns):
-        df["city_cleaned"] = (
-            df[city]
+        ix = df[df[city].notnull()].index
+        df.loc[ix, "city_cleaned"] = (
+            df.loc[ix, city]
             .str.replace(
                 r" \(.*\)$", "", regex=True
             )  # Neuville-Housset (La) -> Neuville-Housset
