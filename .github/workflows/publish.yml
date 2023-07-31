@@ -56,6 +56,12 @@ jobs:
       #----------------------------------------------
       - name: Set pypi token
         run: poetry config pypi-token.pypi ${{secrets.PYPI_TOKEN}}
+        
+      #----------------------------------------------
+      # build
+      #----------------------------------------------
+      - name: Build
+        run: poetry build
       
       #----------------------------------------------
       #              run test suite
