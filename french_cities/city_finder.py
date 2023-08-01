@@ -82,7 +82,12 @@ def _fuzzy_match_cities_names(
             index=ix1,
             columns=df.loc[ix2, "CODE"],
         ).replace(0, np.nan)
-        results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
+
+        try:
+            results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
+        except ValueError:
+            continue
+
     results = pd.concat(results, ignore_index=False).sort_index()
 
     try:
@@ -356,7 +361,7 @@ def find_city(
         {field for test_cols in to_test_ok for field in test_cols}
     )
 
-    addresses = df.loc[:, components_kept + ["candidat_0"]]
+    addresses = df.loc[:, components_kept + ["candidat_0"]].drop_duplicates()
 
     # Add dep recognition if not already there, just to check the result's
     # coherence (and NOT to compute city recognition using it!)
@@ -392,7 +397,7 @@ def find_city(
         temp_addresses = temp_addresses.join(
             list_map(temp_addresses.copy(), components).to_frame("full")
         )
-        temp_addresses = temp_addresses.drop_duplicates(keep="first")
+        temp_addresses = temp_addresses.drop_duplicates("full", keep="first")
 
         if "full" in set(addresses.columns):
             addresses = addresses.drop("full", axis=1)
@@ -504,6 +509,7 @@ def find_city(
         missing = df.loc[ix, [dep, "city_cleaned"]]
         missing = _fuzzy_match_cities_names(year, missing, "candidat_missing")
         df = df.merge(missing, on=[dep, "city_cleaned"], how="left")
+        df = df.drop_duplicates()
 
         candidats = [field_output, "candidat_missing"]
         df[field_output] = combine(df, candidats)
