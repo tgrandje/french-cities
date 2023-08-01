@@ -151,9 +151,7 @@ def _process_departements_from_postal(
         )
 
         results_cedex = results_cedex.sort_values(["codePostal", "score"])
-        results_cedex = results_cedex.drop_duplicates(
-            "codePostal", keep="last"
-        )
+        results_cedex = results_cedex.drop_duplicates(source, keep="last")
         results_cedex = results_cedex.drop(
             ["nom_com", "score", "libelle"], axis=1
         )
