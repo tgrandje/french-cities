@@ -11,6 +11,8 @@ import logging
 import time
 from tqdm import tqdm
 from pebble import ThreadPool
+from rapidfuzz import fuzz
+from unidecode import unidecode
 
 from french_cities.utils import init_pynsee
 
@@ -52,7 +54,6 @@ def _process_departements_from_postal(
         )
 
     postal_codes = df[[source]].drop_duplicates(keep="first")
-
     r = session.post(
         # recherche grâce à l'API de la BAN
         "https://api-adresse.data.gouv.fr/search/csv/",
@@ -79,7 +80,7 @@ def _process_departements_from_postal(
                 # recherche "en masse" grâce à l'API de la BAN
                 "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/correspondance-code-cedex-code-insee/records",
                 params={
-                    "select": "insee,nom_dep",
+                    "select": "insee,libelle,nom_com",
                     "where": f"code={x}",
                     "limit": "10",
                     "offset": "0",
@@ -98,6 +99,7 @@ def _process_departements_from_postal(
                 )
                 return None
         results = r.json()["results"]
+
         for dict_ in results:
             dict_.update({source: x})
         return results
@@ -123,12 +125,54 @@ def _process_departements_from_postal(
                     finally:
                         pbar.update(1)
         results_cedex = pd.DataFrame(results_cedex)
+
+        # Select main city in case of discordant results. For instance, with
+        # postcode=74105, you'll get:
+        #    insee       nom_dep          libelle          nom_com
+        # 0  74145  HAUTE-SAVOIE  ANNEMASSE CEDEX          Juvigny
+        # 1  74012  HAUTE-SAVOIE  ANNEMASSE CEDEX        Annemasse
+        # 2  74305  HAUTE-SAVOIE  ANNEMASSE CEDEX   Ville-la-Grand
+        # 3  74298  HAUTE-SAVOIE  ANNEMASSE CEDEX  Vétraz-Monthoux
+
+        for f in ["libelle", "nom_com"]:
+            results_cedex[f] = (
+                results_cedex[f]
+                .str.upper()
+                .apply(unidecode)
+                .str.split(r"\W+")
+                .str.join(" ")
+                .str.strip(" ")
+            )
+        results_cedex["libelle"] = results_cedex["libelle"].str.replace(
+            r" CEDEX", ""
+        )
+        results_cedex["score"] = results_cedex[["libelle", "nom_com"]].apply(
+            lambda xy: fuzz.token_set_ratio(*xy), axis=1
+        )
+
+        results_cedex = results_cedex.sort_values(["codePostal", "score"])
+        results_cedex = results_cedex.drop_duplicates(
+            "codePostal", keep="last"
+        )
+        results_cedex = results_cedex.drop(
+            ["nom_com", "score", "libelle"], axis=1
+        )
+        results_cedex = results_cedex.drop_duplicates()
+
         results_cedex = _process_departements_from_insee_code(
             results_cedex, source="insee", alias="dep_cedex", session=session
         )
         result = result.merge(results_cedex, on=source, how="left")
         result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
-        result = result.drop(list(set(results_cedex.columns) - {source,}), axis=1)
+        result = result.drop(
+            list(
+                set(results_cedex.columns)
+                - {
+                    source,
+                }
+            ),
+            axis=1,
+        )
 
     logger.info("résultat obtenu")
 
