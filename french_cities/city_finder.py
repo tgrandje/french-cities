@@ -447,33 +447,37 @@ def find_city(
         ix = results_api[results_api.dep == results_api.result_dep].index
         results_api = results_api.loc[ix]
 
-        # Control result : fuzzy matching on city label
-        results_api["result_city"] = (
-            results_api["result_city"]
-            .str.upper()
-            .apply(unidecode)
-            .str.split(r"\W+")
-            .str.join(" ")
-        )
-        results_api["score"] = results_api[
-            ["city_cleaned", "result_city"]
-        ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
+        if not results_api.empty:
+            # Control result : fuzzy matching on city label
+            results_api["result_city"] = (
+                results_api["result_city"]
+                .str.upper()
+                .apply(unidecode)
+                .str.split(r"\W+")
+                .str.join(" ")
+            )
+            results_api["score"] = results_api[
+                ["city_cleaned", "result_city"]
+            ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
 
-        ix = results_api[
-            # Either a good fuzzy match
-            ((results_api["city_cleaned"] != "") & (results_api["score"] > 80))
-            # Or a good match on BAN (case of cities fusion for instance):
-            | (results_api["city_cleaned"] != "")
-            & (results_api["result_score"] > 0.6)
-            # Or a goodish match on BAN but no available city label:
-            | (results_api["city_cleaned"] == "")
-            & (results_api["result_score"] > 0.4)
-        ].index
+            ix = results_api[
+                # Either a good fuzzy match
+                (
+                    (results_api["city_cleaned"] != "")
+                    & (results_api["score"] > 80)
+                )
+                # Or a good match on BAN (case of cities fusion for instance):
+                | (results_api["city_cleaned"] != "")
+                & (results_api["result_score"] > 0.6)
+                # Or a goodish match on BAN but no available city label:
+                | (results_api["city_cleaned"] == "")
+                & (results_api["result_score"] > 0.4)
+            ].index
 
-        results_api = results_api.loc[ix, ["full", "result_citycode"]].rename(
-            {"result_citycode": f"candidat_{k+1}"}, axis=1
-        )
-        addresses = addresses.merge(results_api, on="full", how="left")
+            results_api = results_api.loc[
+                ix, ["full", "result_citycode"]
+            ].rename({"result_citycode": f"candidat_{k+1}"}, axis=1)
+            addresses = addresses.merge(results_api, on="full", how="left")
 
     def combine(df: pd.DataFrame, columns: list) -> pd.Series:
         columns = [x for x in columns if x in set(df.columns)]
@@ -486,6 +490,7 @@ def find_city(
     # Proceed in two steps to keep best result (in case there are results from
     # geolocation on lines with nothing other than coordinates)
     candidats = [f"candidat_{k+1}" for k in range(len(to_test_ok))]
+    candidats = [x for x in candidats if x in addresses.columns]
     addresses["best"] = combine(addresses, candidats)
     addresses = addresses.drop(candidats, axis=1)
     addresses = addresses.drop("full", axis=1)

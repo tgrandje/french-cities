@@ -134,43 +134,47 @@ def _process_departements_from_postal(
         # 2  74305  HAUTE-SAVOIE  ANNEMASSE CEDEX   Ville-la-Grand
         # 3  74298  HAUTE-SAVOIE  ANNEMASSE CEDEX  Vétraz-Monthoux
 
-        for f in ["libelle", "nom_com"]:
-            results_cedex[f] = (
-                results_cedex[f]
-                .str.upper()
-                .apply(unidecode)
-                .str.split(r"\W+")
-                .str.join(" ")
-                .str.strip(" ")
+        if not results_cedex.empty:
+            for f in ["libelle", "nom_com"]:
+                results_cedex[f] = (
+                    results_cedex[f]
+                    .str.upper()
+                    .apply(unidecode)
+                    .str.split(r"\W+")
+                    .str.join(" ")
+                    .str.strip(" ")
+                )
+            results_cedex["libelle"] = results_cedex["libelle"].str.replace(
+                r" CEDEX", ""
             )
-        results_cedex["libelle"] = results_cedex["libelle"].str.replace(
-            r" CEDEX", ""
-        )
-        results_cedex["score"] = results_cedex[["libelle", "nom_com"]].apply(
-            lambda xy: fuzz.token_set_ratio(*xy), axis=1
-        )
+            results_cedex["score"] = results_cedex[
+                ["libelle", "nom_com"]
+            ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
 
-        results_cedex = results_cedex.sort_values([source, "score"])
-        results_cedex = results_cedex.drop_duplicates(source, keep="last")
-        results_cedex = results_cedex.drop(
-            ["nom_com", "score", "libelle"], axis=1
-        )
-        results_cedex = results_cedex.drop_duplicates()
+            results_cedex = results_cedex.sort_values([source, "score"])
+            results_cedex = results_cedex.drop_duplicates(source, keep="last")
+            results_cedex = results_cedex.drop(
+                ["nom_com", "score", "libelle"], axis=1
+            )
+            results_cedex = results_cedex.drop_duplicates()
 
-        results_cedex = _process_departements_from_insee_code(
-            results_cedex, source="insee", alias="dep_cedex", session=session
-        )
-        result = result.merge(results_cedex, on=source, how="left")
-        result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
-        result = result.drop(
-            list(
-                set(results_cedex.columns)
-                - {
-                    source,
-                }
-            ),
-            axis=1,
-        )
+            results_cedex = _process_departements_from_insee_code(
+                results_cedex,
+                source="insee",
+                alias="dep_cedex",
+                session=session,
+            )
+            result = result.merge(results_cedex, on=source, how="left")
+            result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
+            result = result.drop(
+                list(
+                    set(results_cedex.columns)
+                    - {
+                        source,
+                    }
+                ),
+                axis=1,
+            )
 
     logger.info("résultat obtenu")
 
