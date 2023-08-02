@@ -7,7 +7,7 @@ from french_cities.city_finder import find_city
 from french_cities.departement_finder import find_departements
 from french_cities.vintage import set_vintage
 
-load_dotenv()
+load_dotenv(override=True)
 
 __version__ = version(__package__)
 

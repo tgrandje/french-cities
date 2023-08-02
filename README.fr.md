@@ -5,7 +5,7 @@ départements ou de communes...
 
 # Installation
 
-`pip install french-cities`
+`pip install french-cities[full]`
 
 Notez qu'à cette heure, `pynsee` ne supporte pas les projections de codes commune. 
 Dans l'immédiat, après avoir installé `french-cities` depuis pypi, il faut donc
@@ -15,6 +15,9 @@ github :
 pip uninstall pynsee
 pip install git+https://github.com/InseeFrLab/pynsee
 ```
+
+L'installation "full" permet d'installer geopy qui est une dépendance 
+optionnelle utilisable en dernier ressort.
 
 # Configuration
 
@@ -30,12 +33,15 @@ d'environnement :
 Merci de se référer à [la documentation de `pynsee`](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
 pour plus d'information sur les clefs API et la configuration.
 
+A noter que la configuration des proxy par variable d'environnement sera 
+fonctionnelle pour à la fois `pynsee` et `geopy`.
+
 ## Gestion des sessions web
-`pynsee` utilise son propre gestionnaire de session web. 
+`pynsee` et `geopy` utilisent leur propres gestionnaires de session web. 
 Ainsi, les objets Session passés en argument à `french-cities` ne seront
-**PAS** partagés avec `pynsee`. Cela explique la possibilité de passer une 
-session en argument alors même que des proxy professionnels peuvent être 
-spécifiés par variables d'environnement (pour `pynsee`).
+**PAS** partagés avec `pynsee` ou `geopy`. Cela explique la possibilité de 
+passer une session en argument alors même que des proxy professionnels peuvent 
+être spécifiés par variables d'environnement (pour `pynsee` et `geopy`).
 
 ## Utilisation
 
@@ -172,6 +178,9 @@ Pour une documentation complète sur la fonction `find_city`, merci
 d'utiliser la commande suivante :
 `help(find_city)`.
 
+**Nota** : pour activer l'utilisation de `geopy` (API Nominatim d'OpenStreeMap) 
+en dernier ressort, il convient d'utiliser l'argument `use_nominatim_backend=True`.
+
 ### Projection de codes communes dans un millésime donné
 `french-cities` peut tenter de "projeter" un dataframe dans un millésime donné,
 la date initiale demeurant inconnue (voire inexistante, les cas de fichiers
@@ -224,6 +233,12 @@ Pour une documentation complète sur la fonction `set_vintage`, merci
 d'utiliser la commande suivante :
 `help(set_vintage)`.
 
+## Documentation externe
+
+`french-cities` utilise plusieurs API externes. N'hésitez pas à consulter :
+* [documentation](https://adresse.data.gouv.fr/api-doc/adresse) (en Français) de l'API Adresse
+* [documentation](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/api/?flg=fr&q=code%3D68013&lang=fr) (en Français) de l'API OpenDataSoft.
+* [Politique d'usage de Nominatim](https://operations.osmfoundation.org/policies/nominatim/)
 
 ## Support
 En cas de bugues, merci d'ouvrir un ticket [sur le repo](https://github.com/tgrandje/french-cities/issues).

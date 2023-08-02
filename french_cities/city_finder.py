@@ -17,6 +17,10 @@ from pyproj import Transformer
 from datetime import date, timedelta
 from typing import Union
 import numpy as np
+from geopy.extra.rate_limiter import RateLimiter
+from geopy.geocoders import Nominatim
+from functools import partial
+from uuid import uuid4
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
@@ -24,6 +28,73 @@ from french_cities.utils import init_pynsee
 
 
 logger = logging.getLogger(__name__)
+
+
+def _nominatim_geolocation(
+    year: str, look_for: pd.DataFrame, alias: str
+) -> pd.DataFrame:
+    """
+    Use Nominatim API to geolocate rows of the dataframe. This can be a lengthy
+    process.
+
+    Parameters
+    ----------
+    year : str
+        Desired vintage ("last" or castable to int)
+    look_for : pd.DataFrame
+        DataFrame cities (the queries will be performed on column "query") we
+        are trying to find a match to
+    alias : str
+        field to use to store the positive matches' codes into the returned
+        dataframe
+
+    Returns
+    -------
+    look_for : pd.DataFrame
+        DataFrame of positive matches (ie look_for + one mor column under the
+        label `alias`)
+
+    """
+
+    logger.info(
+        "Please read Nominatim Usage Policy at "
+        "https://operations.osmfoundation.org/policies/nominatim/"
+    )
+    user_agent = f"french-cities-{uuid4()}"
+    geolocator = Nominatim(user_agent=user_agent)
+    geocode = RateLimiter(
+        partial(
+            geolocator.geocode,
+            language="fr",
+            country_codes="fr",
+            featuretype="city",
+        ),
+        min_delay_seconds=1,
+    )
+
+    logger.info(
+        "Nominatim API will perform requests at a rate of one request "
+        f"per second : this task will need around {len(look_for)}s."
+    )
+
+    results = look_for["query"].apply(geocode)
+    look_for = look_for.assign(results=results)
+    ix = look_for[look_for.results.notnull()].index
+    for f in ["latitude", "longitude"]:
+        look_for.loc[ix, f] = look_for.loc[ix, "results"].apply(
+            lambda loc: getattr(loc, f)
+        )
+
+    look_for = _find_from_geoloc(
+        epsg=4326,
+        df=look_for,
+        year=year,
+        x="longitude",
+        y="latitude",
+        field_output=alias,
+    )
+    look_for = look_for.drop(["latitude", "longitude", "results"], axis=1)
+    return look_for
 
 
 def _fuzzy_match_cities_names(
@@ -81,7 +152,10 @@ def _fuzzy_match_cities_names(
             ),
             index=ix1,
             columns=df.loc[ix2, "CODE"],
+            # index=look_for.loc[ix1, "city_cleaned"],
+            # columns=df.loc[ix2, "TITLE_SHORT"],
         ).replace(0, np.nan)
+        # print(match_)
 
         try:
             results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
@@ -180,12 +254,15 @@ def _find_from_geoloc(
     )
 
     df = gpd.GeoDataFrame(temp.to_frame().join(df), crs=3857)
-    df = df.sjoin(com[["insee_com", "geometry"]], how="left")
+    rename = {"insee_com": field_output}
+    df = df.sjoin(
+        com[["insee_com", "geometry"]].rename(rename, axis=1), how="left"
+    )
     df = df.drop(["geometry", "index_right"], axis=1)
 
     if year not in {str(date.today().year), "last"}:
         year = int(year)
-        df = set_vintage(df, year, "insee_com")
+        df = set_vintage(df, year, field_output)
     return df
 
 
@@ -201,6 +278,7 @@ def find_city(
     field_output: str = "insee_com",
     epsg: int = None,
     session: Session = None,
+    use_nominatim_backend: bool = False,
 ) -> pd.DataFrame:
     """
     Find cities in a dataframe using multiple methods (either based on
@@ -261,6 +339,11 @@ def find_city(
         (used under the hood for geolocation recognition) uses it's own
         session. The default is None (and will use a CachedSession with
         30 days expiration)
+    use_nominatim_backend : bool, optional
+        If set to True, will try to use the Nominatim API in last resort. This
+        might slow the process as the API's rate is on one request per second.
+        Please read Nominatim Usage Policy at
+        https://operations.osmfoundation.org/policies/nominatim/
 
     Raises
     ------
@@ -336,6 +419,9 @@ def find_city(
             .apply(unidecode)  # A voir si on conserve
             .str.split(r"\W+")
             .str.join(" ")
+            .str.replace(r"(^|\s)(ST)\s", " SAINT ", regex=True)
+            .str.replace(r"(^|\s)(STE)\s", " SAINTE ", regex=True)
+            .str.replace(r"[0-9]* ?EME KM", "", regex=True)  # TAMPON 14EME KM
             .str.strip(" ")
             .str.replace(r" ?CEDEX$", "", regex=True)  # LOOS CEDEX -> LOOS
         )
@@ -357,6 +443,14 @@ def find_city(
         else:
             to_test_ok.append(test_cols)
 
+    # Check that postcodes match 5 digits codes
+    try:
+        ix = df[df[postcode].notnull()].index
+        if not (df.loc[ix, postcode].str.len() == 5).all():
+            df.loc[ix, postcode] = df.loc[ix, postcode].str.zfill(5)
+    except KeyError:
+        pass
+
     components_kept = list(
         {field for test_cols in to_test_ok for field in test_cols}
     )
@@ -365,14 +459,21 @@ def find_city(
 
     # Add dep recognition if not already there, just to check the result's
     # coherence (and NOT to compute city recognition using it!)
-    if dep not in components_kept:
-        addresses = find_departements(
-            addresses, postcode, dep, "postcode", session
-        )
+    if not dep:
+        dep = "dep"
+    try:
+        if dep not in components_kept:
+            addresses = find_departements(
+                addresses, postcode, dep, "postcode", session
+            )
+    except KeyError:
+        pass
 
     for k, components in enumerate(to_test_ok):
         cols_candidates = [
-            x for x in addresses.columns if x.startswith("candidat_")
+            x
+            for x in addresses.columns
+            if isinstance(x, str) and x.startswith("candidat_")
         ]
 
         ix = addresses[
@@ -407,6 +508,7 @@ def find_city(
 
         # Use the BAN's CSV geocoder
         logger.info(f"request BAN with CSV geocoder and {components}...")
+
         r = session.post(
             # recherche "en masse" grâce à l'API de la BAN
             "https://api-adresse.data.gouv.fr/search/csv/",
@@ -466,12 +568,17 @@ def find_city(
                     (results_api["city_cleaned"] != "")
                     & (results_api["score"] > 80)
                 )
-                # Or a good match on BAN (case of cities fusion for instance):
-                | (results_api["city_cleaned"] != "")
-                & (results_api["result_score"] > 0.6)
+                # Or a goodish match on BAN (case of cities fusion, city
+                # neighborhoods, ski stations...):
+                | (
+                    (results_api["city_cleaned"] != "")
+                    & (results_api["result_score"] > 0.3)
+                )
                 # Or a goodish match on BAN but no available city label:
-                | (results_api["city_cleaned"] == "")
-                & (results_api["result_score"] > 0.4)
+                | (
+                    (results_api["city_cleaned"] == "")
+                    & (results_api["result_score"] > 0.2)
+                )
             ].index
 
             results_api = results_api.loc[
@@ -510,7 +617,7 @@ def find_city(
     # Where still no results, check directly from INSEE's website for obsolete
     # cities (using dep & city)
     ix = df[df[field_output].isnull()].index
-    if len(ix) > 0:
+    if len(ix) > 0 and use_nominatim_backend:
         missing = df.loc[ix, [dep, "city_cleaned"]]
         missing = _fuzzy_match_cities_names(year, missing, "candidat_missing")
         df = df.merge(missing, on=[dep, "city_cleaned"], how="left")
@@ -520,6 +627,51 @@ def find_city(
         df[field_output] = combine(df, candidats)
         df = df.drop("candidat_missing", axis=1)
 
+    # Where still no results, give a go at individual requests through geopy
+    # with geocodage (if use_nominatim_backend set to True)
+    ix = df[df[field_output].isnull()].index
+    if use_nominatim_backend and len(ix) > 0:
+        for use in [postcode, dep]:
+            ix = df[df[field_output].isnull()].index
+
+            try:
+                df[use]
+            except KeyError:
+                continue
+            missing = df.loc[ix, [use, "city_cleaned"]]
+            missing = missing.drop_duplicates(keep="first")
+            missing["query"] = missing[use] + " " + missing["city_cleaned"]
+            missing = _nominatim_geolocation(
+                year=year,
+                look_for=missing[["query"]],
+                alias="insee_com_nominatim",
+            )
+
+            missing = find_departements(
+                missing,
+                source="insee_com_nominatim",
+                alias="dep_nominatim",
+                type_code="insee",
+            )
+            temp = df.loc[ix]
+            temp["query"] = temp[use] + " " + temp["city_cleaned"]
+            temp = temp.merge(missing, on="query")
+            ix = temp[
+                (temp["insee_com_nominatim"].notnull())
+                & (temp[dep] == temp["dep_nominatim"])
+            ].index
+            temp = temp.loc[ix]
+            df = df.merge(
+                temp[[use, "city_cleaned", "insee_com_nominatim"]],
+                on=[use, "city_cleaned"],
+                how="left",
+            )
+            df[field_output] = combine(
+                df, [field_output, "insee_com_nominatim"]
+            )
+            df = df.drop("insee_com_nominatim", axis=1)
+
     df = df.drop("city_cleaned", axis=1)
+
     df = df.set_index("index")
     return df

@@ -176,6 +176,17 @@ def _process_departements_from_postal(
                 axis=1,
             )
 
+    ix = result[result[alias].isnull()].index
+    if len(ix) > 0:
+        # Still no results -> assume we can use the first characters of
+        # postcode anyway
+        result.loc[ix, alias] = _process_departements_from_insee_code(
+            result.loc[ix],
+            source=source,
+            alias="dep",
+            session=session,
+        )[alias]
+
     logger.info("résultat obtenu")
 
     df = df.merge(result, on=source, how="left")

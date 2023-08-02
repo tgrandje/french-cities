@@ -4,7 +4,7 @@ Toolbox on french cities: set vintage, find departments, find cities...
 
 # Installation
 
-`pip install french-cities`
+`pip install french-cities[full]`
 
 Note that at this instant, `pynsee` doesn't support communal projection.
 After installing `french-cities` from pypi, please uninstall pynsee and replace
@@ -14,6 +14,8 @@ pip uninstall pynsee
 pip install git+https://github.com/InseeFrLab/pynsee
 ```
 
+Note that the "full" installation will also install geopy, which might use
+Nominatim API for city recognition as a last resort.
 
 
 # Configuration
@@ -29,12 +31,15 @@ the credentials up. You can set up to four environment variables:
 Please refer to [`pynsee`'s documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
 to help configure the API's access.
 
+Note that setting environment variable for proxy will set it for both `pynsee`
+and `geopy`.
+
 ## Session management
-Note that `pynsee` uses it's own web session. Every Session object you will pass
-to `french-cities` will **NOT** be shared with `pynsee`. This explains the
-possibility to pass a session as an argument to `french-cities` functions,
-even if you had to configure the corporate proxy through environment variables
-for `pynsee`.
+Note that `pynsee` and `geopy` use their own web session. Every Session object 
+you will pass to `french-cities` will **NOT** be shared with `pynsee` or `geopy`. 
+This explains the possibility to pass a session as an argument to `french-cities` 
+functions, even if you had to configure the corporate proxy through environment 
+variables for `pynsee` and `geopy`.
 
 ## Basic usage
 
@@ -164,6 +169,9 @@ print(df)
 For a complete documentation on `find_city`, please type 
 `help(find_city)`.
 
+**Note** : to activate `geopy` (Nominatim API from OpenStreeMap) usage in last 
+resort, you will need to use the argument `use_nominatim_backend=True`.
+
 ### Set vintage to cities' codes
 `french-cities` can try to project a given dataframe into a set vintage,
 starting from an unknown vintage (or even a non-vintaged dataset, which is 
@@ -211,6 +219,12 @@ print(df)
 For a complete documentation on `set_vintage`, please type 
 `help(set_vintage)`.
 
+## External documentation
+
+`french-cities` makes use of multiple APIs. Please read :
+* [documentation](https://adresse.data.gouv.fr/api-doc/adresse) (in french) on API Adresse
+* [documentation](https://public.opendatasoft.com/explore/dataset/correspondance-code-cedex-code-insee/api/?flg=fr&q=code%3D68013&lang=fr) (in french) on OpenDataSoft API
+* [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/)
 
 ## Support
 In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).

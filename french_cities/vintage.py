@@ -5,11 +5,14 @@ Created on Fri Jul  7 09:17:12 2023
 import pandas as pd
 from functools import partial
 from tqdm import tqdm
+import logging
 
 from french_cities.utils import init_pynsee
 from pynsee.localdata import get_area_list
 from pynsee.localdata import get_ascending_area
 from pynsee.localdata import get_area_projection
+
+logger = logging.getLogger(__name__)
 
 
 def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
@@ -247,24 +250,31 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     # Obsolete cities : merge, etc. : look for projection starting from an old
     # date, using INSEE API
     date = f"{year}-01-01"
-    starting_dates = {
+    starting_dates = [
         "1943-01-01",
         "1960-01-01",
         "1980-01-01",
         "2000-01-01",
         "2010-01-01",
-    }
+    ]
 
     def get_city(x):
         for date_init in starting_dates:
+            # Hack to deactivate standard error log entries by pynsee which are
+            # concieved with a valid date in mind.
+            previous_level = logging.root.manager.disable
+            logging.disable(logging.ERROR)
             df = get_area_projection(
                 code=x, area="commune", date=date_init, dateProjection=date
             )
+            logging.disable(previous_level)
+
             if df is not None:
                 break
         try:
             return df.at[0, "code"]
         except Exception:
+            logger.error(f"No projection found for city {x}")
             return None
 
     ix = uniques[uniques.PROJECTED.isnull()].index

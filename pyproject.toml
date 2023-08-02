@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "french-cities"
-version = "0.1.0a14"
+version = "0.1.1a1"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "etalab-2.0"
@@ -32,6 +32,10 @@ pynsee = "^0.1.4"
 pebble = "^5.0.3"
 tqdm = "^4.65.0"
 importlib-metadata = "^6.8.0"
+geopy = "^2.3.0"
+
+[tool.poetry.extras]
+full = ["geopy"]
 
 [tool.poetry.group.dev.dependencies]
 spyder = "^5.4.3"
