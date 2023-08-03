@@ -43,7 +43,7 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --without dev
+        run: poetry install --no-interaction --without dev --extras "full"
         
       #----------------------------------------------
       # remove standard pynsee
