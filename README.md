@@ -108,10 +108,10 @@ Note that the algorithm can (and will) make errors using xy coordinates on a
 older vintage (ie different from the current one) in the case of historic 
 splitting of cities (the geographic files are not vintaged yet).
 
-The lexical (postcode, city, address, departement) recognition is based on the
-BAN (base adresse nationale). The algorithm won't collect underscored
-results, but failures may still occure (and will be in accordance with the 
-BAN's failures).
+The lexical (postcode, city, address, departement) recognition is based on a
+python fuzzy matching, the BAN API(base adresse nationale) or the Nominatim
+API of OSM (if activated). The algorithm won't collect underscored
+results, but failures may still occure.
 
 ```
 from french_cities import find_city

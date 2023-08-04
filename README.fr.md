@@ -117,9 +117,10 @@ Les communes impactées sont les communes restaurées ("scission"), le flux de d
 spatialisées du COG servi par pynsee n'étant pas millésimé à ce jour.
 
 La reconnaissance syntaxique (champs postcode, city, address, departement) est
-basée sur la BAN (base adresse nationale). L'algorithme ne conservera pas de
-résultats insuffisamment fiables, mais des erreurs peuvent subsister (elles 
-seront dans ce cas cohérentes avec les résultats de la BAN).
+basée sur un fuzzy matching en langage python, l'API BAN (base adresse nationale),
+ou l'API Nominatim d'OSM (si activé). 
+L'algorithme ne conservera pas de résultats insuffisamment fiables, mais des 
+erreurs peuvent subsister.
 
 ```
 from french_cities import find_city

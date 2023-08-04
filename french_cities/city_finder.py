@@ -21,6 +21,8 @@ from geopy.extra.rate_limiter import RateLimiter
 from geopy.geocoders import Nominatim
 from functools import partial
 from uuid import uuid4
+from tqdm import tqdm
+from pebble import ThreadPool
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
@@ -28,6 +30,20 @@ from french_cities.utils import init_pynsee
 
 
 logger = logging.getLogger(__name__)
+
+
+def combine(df: pd.DataFrame, columns: list) -> pd.Series:
+    """
+    coalesce multiple columns (first not null encountered from left to right
+    is kept) and return the result as pd.Series
+    """
+
+    columns = [x for x in columns if x in set(df.columns)]
+    first, *next_ = columns
+    s = df[first]
+    for field in next_:
+        s = s.combine_first(df[field])
+    return s
 
 
 def _nominatim_geolocation(
@@ -301,9 +317,12 @@ def find_city(
 
     Lexical recognition will try to use the following fields (in that order
     of precedence):
-        - postcode + city label
-        - address + postcode + city label
-        - department + city label
+        - department + city label (fuzzy matching through python)
+        - postcode + city label (through the BAN)
+        - address + postcode + city label (through the BAN)
+        - department + city label (through the BAN)
+        - postcode + city label (through Nominatim, if activated)
+        - dep + city label (through Nominatim, if activated)
 
     Parameters
     ----------
@@ -431,17 +450,17 @@ def find_city(
     # preference
     to_test_ok = []
     to_test = [
-        (postcode, "city_cleaned"),
-        (address, postcode, "city_cleaned"),
-        (dep, "city_cleaned"),
+        ((postcode, "city_cleaned"), "municipality"),
+        ((address, postcode, "city_cleaned"), None),
+        ((dep, "city_cleaned"), "municipality"),
     ]
-    for test_cols in to_test:
+    for test_cols, type_ban_search in to_test:
         try:
             df.loc[:, test_cols]
         except KeyError:
             pass
         else:
-            to_test_ok.append(test_cols)
+            to_test_ok.append((test_cols, type_ban_search))
 
     # Check that postcodes match 5 digits codes
     try:
@@ -452,7 +471,7 @@ def find_city(
         pass
 
     components_kept = list(
-        {field for test_cols in to_test_ok for field in test_cols}
+        {field for test_cols, _ in to_test_ok for field in test_cols}
     )
 
     addresses = df.loc[:, components_kept + ["candidat_0"]].drop_duplicates()
@@ -469,7 +488,22 @@ def find_city(
     except KeyError:
         pass
 
-    for k, components in enumerate(to_test_ok):
+    # Where no results, check directly from INSEE's website for obsolete
+    # cities (using dep & city) using fuzzy matching
+    ix = addresses[addresses["candidat_0"].isnull()].index
+    if len(ix) > 0:
+        missing = addresses.loc[ix, [dep, "city_cleaned"]]
+        missing = _fuzzy_match_cities_names(year, missing, "candidat_missing")
+        addresses = addresses.merge(
+            missing, on=[dep, "city_cleaned"], how="left"
+        )
+        addresses = addresses.drop_duplicates()
+
+        candidats = ["candidat_0", "candidat_missing"]
+        addresses["candidat_0"] = combine(addresses, candidats)
+        addresses = addresses.drop("candidat_missing", axis=1)
+
+    for k, (components, type_ban_search) in enumerate(to_test_ok):
         cols_candidates = [
             x
             for x in addresses.columns
@@ -480,7 +514,11 @@ def find_city(
             np.all(
                 [addresses[col].isnull() for col in cols_candidates], axis=0
             )
+            & np.all([addresses[col].notnull() for col in components], axis=0)
         ].index
+        if len(ix) == 0:
+            addresses[f"candidat_{k+1}"] = np.nan
+            continue
 
         temp_addresses = addresses.loc[ix].drop(cols_candidates, axis=1)
         temp_addresses = temp_addresses.drop_duplicates().fillna("")
@@ -506,133 +544,75 @@ def find_city(
             list_map(addresses.fillna("").copy(), components).to_frame("full")
         )
 
-        # Use the BAN's CSV geocoder
-        logger.info(f"request BAN with CSV geocoder and {components}...")
-
-        r = session.post(
-            # recherche "en masse" grâce à l'API de la BAN
-            "https://api-adresse.data.gouv.fr/search/csv/",
-            files=[
-                ("data", temp_addresses.to_csv(index=False)),
-                ("type", (None, "municipality")),
-                ("result_columns", (None, "full")),
-                ("result_columns", (None, "result_score")),
-                ("result_columns", (None, "result_city")),
-                ("result_columns", (None, "result_citycode")),
-            ],
+        results_api = _post_to_ban_csv_geocoder(
+            addresses=addresses,
+            components=components,
+            session=session,
+            temp_addresses=temp_addresses,
+            dep=dep,
+        )
+        addresses = filter_api_results(
+            results_api=results_api,
+            session=session,
+            rename_candidat=f"candidat_{k+1}",
+            addresses=addresses,
         )
 
-        logger.info("résultat obtenu")
-
-        results_api = (
-            pd.read_csv(
-                io.BytesIO(r.content),
-                dtype={"dep": str, "result_citycode": str},
-            )
-            .drop_duplicates()
-            .loc[
-                :,
-                ["full", "result_score", "result_city", "result_citycode"],
-            ]
-            .merge(
-                temp_addresses[
-                    [dep, "full", "city_cleaned"]
-                ].drop_duplicates(),
-                on="full",
-            )
-        )
-
-        # Control results : same department
-        results_api = find_departements(
-            results_api, "result_citycode", "result_dep", "insee", session
-        )
-        ix = results_api[results_api.dep == results_api.result_dep].index
-        results_api = results_api.loc[ix]
-
-        if not results_api.empty:
-            # Control result : fuzzy matching on city label
-            results_api["result_city"] = (
-                results_api["result_city"]
-                .str.upper()
-                .apply(unidecode)
-                .str.split(r"\W+")
-                .str.join(" ")
-            )
-            results_api["score"] = results_api[
-                ["city_cleaned", "result_city"]
-            ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
-
-            ix = results_api[
-                # Either a good fuzzy match
-                (
-                    (results_api["city_cleaned"] != "")
-                    & (results_api["score"] > 80)
+        if type_ban_search == "municipality":
+            ix = addresses[
+                np.all(
+                    [addresses[col].isnull() for col in cols_candidates],
+                    axis=0,
                 )
-                # Or a goodish match on BAN (case of cities fusion, city
-                # neighborhoods, ski stations...):
-                | (
-                    (results_api["city_cleaned"] != "")
-                    & (results_api["result_score"] > 0.3)
+                & np.all(
+                    [addresses[col].notnull() for col in components], axis=0
                 )
-                # Or a goodish match on BAN but no available city label:
-                | (
-                    (results_api["city_cleaned"] == "")
-                    & (results_api["result_score"] > 0.2)
-                )
+                & (addresses[f"candidat_{k+1}"].isnull())
             ].index
 
-            results_api = results_api.loc[
-                ix, ["full", "result_citycode"]
-            ].rename({"result_citycode": f"candidat_{k+1}"}, axis=1)
-            addresses = addresses.merge(results_api, on="full", how="left")
+            if len(ix) > 0:
+                # Try to use individual geocoding specifying target type
+                # (ie. "municipality" to get better results)
 
-    def combine(df: pd.DataFrame, columns: list) -> pd.Series:
-        columns = [x for x in columns if x in set(df.columns)]
-        first, *next_ = columns
-        s = df[first]
-        for field in next_:
-            s = s.combine_first(df[field])
-        return s
+                results_api = _post_to_ban_individual_geocoder(
+                    addresses=addresses.loc[ix],
+                    components=components,
+                    session=session,
+                    temp_addresses=temp_addresses,
+                    dep=dep,
+                )
+                addresses = filter_api_results(
+                    results_api=results_api,
+                    session=session,
+                    rename_candidat=f"candidat_{k+1}",
+                    addresses=addresses,
+                )
 
     # Proceed in two steps to keep best result (in case there are results from
     # geolocation on lines with nothing other than coordinates)
-    candidats = [f"candidat_{k+1}" for k in range(len(to_test_ok))]
-    candidats = [x for x in candidats if x in addresses.columns]
+    candidats = sorted(
+        [x for x in addresses.columns if x.startswith("candidat")]
+    )
     addresses["best"] = combine(addresses, candidats)
     addresses = addresses.drop(candidats, axis=1)
-    addresses = addresses.drop("full", axis=1)
-    addresses = addresses.drop("candidat_0", axis=1)
+    try:
+        addresses = addresses.drop("full", axis=1)
+    except KeyError:
+        pass
     addresses = addresses.drop_duplicates()
 
     df = df.reset_index(drop=False).merge(
         addresses.replace("", np.nan), how="left", on=components_kept
     )
-    candidats = ["candidat_0", "best"]
-    df[field_output] = combine(df, candidats)
-    df = df.drop(
-        [x for x in candidats if x in set(df.columns)],
-        axis=1,
-    )
-
-    # Where still no results, check directly from INSEE's website for obsolete
-    # cities (using dep & city)
-    ix = df[df[field_output].isnull()].index
-    if len(ix) > 0 and use_nominatim_backend:
-        missing = df.loc[ix, [dep, "city_cleaned"]]
-        missing = _fuzzy_match_cities_names(year, missing, "candidat_missing")
-        df = df.merge(missing, on=[dep, "city_cleaned"], how="left")
-        df = df.drop_duplicates()
-
-        candidats = [field_output, "candidat_missing"]
-        df[field_output] = combine(df, candidats)
-        df = df.drop("candidat_missing", axis=1)
+    df["best"] = combine(df, ["candidat_0", "best"])
+    df = df.drop("candidat_0", axis=1)
 
     # Where still no results, give a go at individual requests through geopy
-    # with geocodage (if use_nominatim_backend set to True)
-    ix = df[df[field_output].isnull()].index
+    # with Nominatim geocodage (if use_nominatim_backend set to True)
+    ix = df[df["best"].isnull()].index
     if use_nominatim_backend and len(ix) > 0:
         for use in [postcode, dep]:
-            ix = df[df[field_output].isnull()].index
+            ix = df[df["best"].isnull()].index
 
             try:
                 df[use]
@@ -641,6 +621,10 @@ def find_city(
             missing = df.loc[ix, [use, "city_cleaned"]]
             missing = missing.drop_duplicates(keep="first")
             missing["query"] = missing[use] + " " + missing["city_cleaned"]
+            ix_empty_query = missing[missing["query"].isnull()].index
+            missing = missing.drop(ix_empty_query)
+            if missing.empty:
+                continue
             missing = _nominatim_geolocation(
                 year=year,
                 look_for=missing[["query"]],
@@ -666,12 +650,183 @@ def find_city(
                 on=[use, "city_cleaned"],
                 how="left",
             )
-            df[field_output] = combine(
-                df, [field_output, "insee_com_nominatim"]
-            )
+            df["best"] = combine(df, ["best", "insee_com_nominatim"])
             df = df.drop("insee_com_nominatim", axis=1)
 
     df = df.drop("city_cleaned", axis=1)
+    df = df.rename({"best": field_output}, axis=1)
 
     df = df.set_index("index")
     return df
+
+
+def _post_to_ban_csv_geocoder(
+    addresses: pd.DataFrame,
+    components: list,
+    session: Session,
+    temp_addresses: pd.DataFrame,
+    dep: str,
+) -> pd.DataFrame:
+    # Use the BAN's CSV geocoder
+    logger.info(f"request BAN with CSV geocoder and {components}...")
+
+    r = session.post(
+        "https://api-adresse.data.gouv.fr/search/csv/",
+        files=[
+            ("data", temp_addresses.to_csv(index=False)),
+            ("type", (None, "municipality")),
+            ("result_columns", (None, "full")),
+            ("result_columns", (None, "result_score")),
+            ("result_columns", (None, "result_city")),
+            ("result_columns", (None, "result_citycode")),
+        ],
+    )
+
+    logger.info("résultat obtenu")
+
+    results_api = (
+        pd.read_csv(
+            io.BytesIO(r.content),
+            dtype={"dep": str, "result_citycode": str},
+        )
+        .drop_duplicates()
+        .loc[
+            :,
+            ["full", "result_score", "result_city", "result_citycode"],
+        ]
+        .merge(
+            temp_addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+            on="full",
+        )
+    )
+    return results_api
+
+
+def _post_to_ban_individual_geocoder(
+    addresses: pd.DataFrame,
+    components: list,
+    session: Session,
+    temp_addresses: pd.DataFrame,
+    dep: str,
+) -> pd.DataFrame:
+    # Use the BAN's individual geocoder
+
+    # revert to multiple queries of BAN, see issue here:
+    # https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
+    logger.info(f"request BAN with individual requests and {components}...")
+
+    def get(x):
+        r = session.get(
+            "https://api-adresse.data.gouv.fr/search/",
+            params={
+                "q": x,
+                "type": "municipality",
+                "autocomplete": 0,
+                "limit": 1,
+            },
+        ).json()
+        features = r["features"]
+        query = r["query"]
+        for dict_ in features:
+            dict_["properties"].update({"full": query})
+
+        return features
+
+    # Without multithreading:
+    # results_api = gpd.GeoDataFrame.from_features(
+    #     np.array(addresses.full.apply(get).tolist()).flatten()
+    #     )
+
+    args = addresses.full.tolist()
+    results = []
+    with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
+        with ThreadPool(10) as pool:
+            future = pool.map(get, args)
+            results_iterator = future.result()
+            while True:
+                try:
+                    this_result = next(results_iterator)
+                    if this_result:
+                        results.append(this_result)
+                except StopIteration:
+                    break
+                finally:
+                    pbar.update(1)
+
+    logger.info("résultat obtenu")
+
+    results_api = (
+        gpd.GeoDataFrame.from_features(np.array(results).flatten())
+        .loc[:, ["full", "score", "city", "citycode"]]
+        .rename(
+            {
+                "score": "result_score",
+                "city": "result_city",
+                "citycode": "result_citycode",
+            },
+            axis=1,
+        )
+        .merge(
+            addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+            on="full",
+        )
+    )
+    return results_api
+
+
+def filter_api_results(
+    results_api, session, rename_candidat, addresses
+) -> pd.DataFrame:
+    # Control results : same department
+    results_api = find_departements(
+        results_api, "result_citycode", "result_dep", "insee", session
+    )
+    ix = results_api[results_api.dep == results_api.result_dep].index
+    results_api = results_api.loc[ix]
+
+    if results_api.empty:
+        return addresses
+
+    # Control result : fuzzy matching on city label
+    results_api["result_city"] = (
+        results_api["result_city"]
+        .str.upper()
+        .apply(unidecode)
+        .str.split(r"\W+")
+        .str.join(" ")
+    )
+    results_api["score"] = results_api[["city_cleaned", "result_city"]].apply(
+        lambda xy: fuzz.token_set_ratio(*xy), axis=1
+    )
+
+    ix = results_api[
+        # Either a good fuzzy match
+        ((results_api["city_cleaned"] != "") & (results_api["score"] > 80))
+        # Or a goodish match on BAN (case of cities fusion, city
+        # neighborhoods, ski stations...):
+        | (
+            (results_api["city_cleaned"] != "")
+            & (results_api["result_score"] > 0.6)
+        )
+        # Or a goodish match on BAN but no available city label:
+        | (
+            (results_api["city_cleaned"] == "")
+            & (results_api["result_score"] > 0.4)
+        )
+    ].index
+
+    if rename_candidat in addresses.columns:
+        results_api = results_api.loc[ix, ["full", "result_citycode"]]
+        addresses = addresses.merge(results_api, on="full", how="left")
+        ix = addresses[addresses.result_citycode.notnull()].index
+        addresses.loc[ix, rename_candidat] = addresses.loc[
+            ix, "result_citycode"
+        ]
+        addresses = addresses.drop("result_citycode", axis=1)
+
+    else:
+        results_api = results_api.loc[ix, ["full", "result_citycode"]].rename(
+            {"result_citycode": rename_candidat}, axis=1
+        )
+        addresses = addresses.merge(results_api, on="full", how="left")
+    return addresses

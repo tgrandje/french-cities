@@ -75,7 +75,7 @@ input_df = pd.DataFrame(
             "y": np.nan,
             "location": "Commune homonyme",
             "dep": "60",
-            "city": "Saint-Sauveur",
+            "city": "St-Sauveur",
             "address": np.nan,
             "postcode": np.nan,
             "target": "60597",
@@ -130,8 +130,18 @@ input_df = pd.DataFrame(
             "postcode": np.nan,
             "target": "62473",
         },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Station de ski",
+            "dep": "74",
+            "city": "Avoriaz",
+            "address": np.nan,
+            "postcode": np.nan,
+            "target": "74191",
+        },
     ],
-    index=[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    index=[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
 )
 
 output_df = find_city(input_df.copy(), epsg=4326)
