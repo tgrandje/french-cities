@@ -17,12 +17,16 @@ from pyproj import Transformer
 from datetime import date, timedelta
 from typing import Union
 import numpy as np
-from geopy.extra.rate_limiter import RateLimiter
-from geopy.geocoders import Nominatim
 from functools import partial
 from uuid import uuid4
 from tqdm import tqdm
 from pebble import ThreadPool
+try:
+    from geopy.extra.rate_limiter import RateLimiter
+    from geopy.geocoders import Nominatim
+except ModuleNotFoundError:
+    pass
+
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
@@ -380,7 +384,8 @@ def find_city(
                 look_for=missing[["query"]],
                 alias="insee_com_nominatim",
             )
-
+            if missing.empty:
+                continue
             missing = find_departements(
                 missing,
                 source="insee_com_nominatim",
@@ -455,7 +460,15 @@ def _find_with_nominatim_geolocation(
         "https://operations.osmfoundation.org/policies/nominatim/"
     )
     user_agent = f"french-cities-{uuid4()}"
-    geolocator = Nominatim(user_agent=user_agent)
+    try:
+        geolocator = Nominatim(user_agent=user_agent)
+    except NameError:
+        logger.error(
+            "geopy not installed - please install optional dependencies "
+            "to use Nominatim geocoder with: pip install french-cities[full]"
+        )
+        return pd.DataFrame()
+        
     geocode = RateLimiter(
         partial(
             geolocator.geocode,
