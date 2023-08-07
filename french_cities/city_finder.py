@@ -32,256 +32,6 @@ from french_cities.utils import init_pynsee
 logger = logging.getLogger(__name__)
 
 
-def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
-    """
-    coalesce multiple columns (first not null encountered from left to right
-    is kept) and return the result as pd.Series
-    """
-
-    columns = [x for x in columns if x in set(df.columns)]
-    first, *next_ = columns
-    s = df[first]
-    for field in next_:
-        s = s.combine_first(df[field])
-    return s
-
-
-def _find_with_nominatim_geolocation(
-    year: str, look_for: pd.DataFrame, alias: str
-) -> pd.DataFrame:
-    """
-    Use Nominatim API to geolocate rows of the dataframe. This can be a lengthy
-    process.
-
-    Parameters
-    ----------
-    year : str
-        Desired vintage ("last" or castable to int)
-    look_for : pd.DataFrame
-        DataFrame cities (the queries will be performed on column "query") we
-        are trying to find a match to
-    alias : str
-        field to use to store the positive matches' codes into the returned
-        dataframe
-
-    Returns
-    -------
-    look_for : pd.DataFrame
-        DataFrame of positive matches (ie look_for + one mor column under the
-        label `alias`)
-
-    """
-
-    logger.info(
-        "Please read Nominatim Usage Policy at "
-        "https://operations.osmfoundation.org/policies/nominatim/"
-    )
-    user_agent = f"french-cities-{uuid4()}"
-    geolocator = Nominatim(user_agent=user_agent)
-    geocode = RateLimiter(
-        partial(
-            geolocator.geocode,
-            language="fr",
-            country_codes="fr",
-            featuretype="settlement ",
-        ),
-        min_delay_seconds=1,
-    )
-
-    logger.info(
-        "Nominatim API will perform requests at a rate of one request "
-        f"per second : this task will need around {len(look_for)}s."
-    )
-
-    results = look_for["query"].apply(geocode)
-    look_for = look_for.assign(results=results)
-    ix = look_for[look_for.results.notnull()].index
-    for f in ["latitude", "longitude"]:
-        look_for.loc[ix, f] = look_for.loc[ix, "results"].apply(
-            lambda loc: getattr(loc, f)
-        )
-
-    look_for = _find_from_geoloc(
-        epsg=4326,
-        df=look_for,
-        year=year,
-        x="longitude",
-        y="latitude",
-        field_output=alias,
-    )
-    look_for = look_for.drop(["latitude", "longitude", "results"], axis=1)
-    return look_for
-
-
-def _find_from_fuzzymatch_cities_names(
-    year: str, look_for: pd.DataFrame, alias: str
-) -> pd.DataFrame:
-    """
-    Use fuzzy matching to retrieve cities from their names to find best
-    candidates.
-
-    Parameters
-    ----------
-    year : str
-        Desired vintage ("last" or castable to int)
-    look_for : pd.DataFrame
-        DataFrame cities (expected columns are "city_cleaned" & "dep") we are
-        trying to find a match to
-    alias : str
-        field to use to store the positive matches' codes into the returned
-        datafram
-
-    Returns
-    -------
-    match : pd.DataFrame
-        DataFrame of positive matches (ie look_for + one mor column under the
-        label `alias`)
-
-    """
-    init_pynsee()
-
-    df = get_area_list("communes", date="*")
-    df["TITLE_SHORT"] = (
-        df["TITLE_SHORT"]
-        .str.upper()
-        .apply(unidecode)
-        .str.split(r"\W+")
-        .str.join(" ")
-        .str.strip(" ")
-    )
-    df = df.loc[:, ["TITLE_SHORT", "CODE"]]
-
-    df = find_departements(df, source="CODE", alias="dep", type_code="insee")
-    df = df.drop_duplicates(["TITLE_SHORT", "dep"])
-    df = df.reset_index(drop=False)
-
-    results = []
-    for dep in look_for["dep"].unique():
-        ix1 = look_for[look_for.dep == dep].index
-        ix2 = df[df.dep == dep].index
-        match_ = pd.DataFrame(
-            cdist(
-                look_for.loc[ix1, "city_cleaned"],
-                df.loc[ix2, "TITLE_SHORT"],
-                score_cutoff=80,
-                workers=-1,
-            ),
-            index=ix1,
-            columns=df.loc[ix2, "CODE"],
-            # index=look_for.loc[ix1, "city_cleaned"],
-            # columns=df.loc[ix2, "TITLE_SHORT"],
-        ).replace(0, np.nan)
-        # print(match_)
-
-        try:
-            results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
-        except ValueError:
-            continue
-
-    results = pd.concat(results, ignore_index=False).sort_index()
-
-    try:
-        year = int(year)
-    except ValueError:
-        year = date.today().year
-    results = set_vintage(results.to_frame("CODE"), year, "CODE")
-
-    results = look_for.join(results)
-
-    results = results.rename({"CODE": alias}, axis=1)
-    return results
-
-
-def _find_from_geoloc(
-    epsg: int,
-    df: pd.DataFrame,
-    year: str = "last",
-    x: str = "x",
-    y: str = "y",
-    field_output: str = "insee_com",
-) -> pd.DataFrame:
-    """
-    Find cities codes from coordinates using a spatial join.
-
-    Note that the result will be approximative as the IGN's WFS data is not
-    vintaged (yet ?). The spatial join will then be computed against latest
-    available data. A reprojection in the desired vintage will be done
-    afterwards, but cities joined during this lapse time will NOT be correctly
-    found.
-
-    Parameters
-    ----------
-    epsg : int
-        EPSG code of projection
-    df : pd.DataFrame
-        input DataFrame. Must have an 'x' and an 'y' columns containing points
-    year : str, optional
-        Desired vintage for cities; must a castable value to int or "last".
-        The default is "last".
-    x : str, optional
-        Field (column) containing the x coordinates values. Set to False if
-        not available. The default is "x".
-    y : str, optional
-        Field (column) containing the y coordinates values. Set to False if
-        not available. The default is "y".
-    field_output : str, optional
-        Column to store the cities code into. The default is "insee_com".
-
-    Raises
-    ------
-    ValueError
-        If year not castable to int, or not "last".
-
-    Returns
-    -------
-    df : pd.DataFrame
-        output DataFrame with `field_output` containing cities' codes
-
-    """
-
-    logger.info("find city through geolocation...")
-
-    if year != "last":
-        try:
-            int(year)
-        except ValueError:
-            raise ValueError(
-                "year should either be castable to int or 'last', "
-                f"found {year} instead"
-            )
-
-    if str(year) not in {str(date.today().year), "last"}:
-        logger.warning(
-            "As of yet, ADMINEXPRESS can't be fetched with a vintage "
-            "setting: the querying of cities using coordinates WILL have "
-            "approximative results."
-        )
-
-    com = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
-    com = gpd.GeoDataFrame(com).set_crs("EPSG:3857")
-
-    transformer = Transformer.from_crs(epsg, 3857, accuracy=1, always_xy=True)
-
-    temp = transformer.transform(df[x].tolist(), df[y].tolist())
-    temp = gpd.GeoSeries(
-        gpd.points_from_xy(x=temp[0], y=temp[1], crs=3857),
-        name="geometry",
-        index=df.index,
-    )
-
-    df = gpd.GeoDataFrame(temp.to_frame().join(df), crs=3857)
-    rename = {"insee_com": field_output}
-    df = df.sjoin(
-        com[["insee_com", "geometry"]].rename(rename, axis=1), how="left"
-    )
-    df = df.drop(["geometry", "index_right"], axis=1)
-
-    if year not in {str(date.today().year), "last"}:
-        year = int(year)
-        df = set_vintage(df, year, field_output)
-    return df
-
-
 def find_city(
     df: pd.DataFrame,
     year: str = "last",
@@ -657,6 +407,256 @@ def find_city(
     df = df.rename({"best": field_output}, axis=1)
 
     df = df.set_index("index")
+    return df
+
+
+def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
+    """
+    coalesce multiple columns (first not null encountered from left to right
+    is kept) and return the result as pd.Series
+    """
+
+    columns = [x for x in columns if x in set(df.columns)]
+    first, *next_ = columns
+    s = df[first]
+    for field in next_:
+        s = s.combine_first(df[field])
+    return s
+
+
+def _find_with_nominatim_geolocation(
+    year: str, look_for: pd.DataFrame, alias: str
+) -> pd.DataFrame:
+    """
+    Use Nominatim API to geolocate rows of the dataframe. This can be a lengthy
+    process.
+
+    Parameters
+    ----------
+    year : str
+        Desired vintage ("last" or castable to int)
+    look_for : pd.DataFrame
+        DataFrame cities (the queries will be performed on column "query") we
+        are trying to find a match to
+    alias : str
+        field to use to store the positive matches' codes into the returned
+        dataframe
+
+    Returns
+    -------
+    look_for : pd.DataFrame
+        DataFrame of positive matches (ie look_for + one mor column under the
+        label `alias`)
+
+    """
+
+    logger.info(
+        "Please read Nominatim Usage Policy at "
+        "https://operations.osmfoundation.org/policies/nominatim/"
+    )
+    user_agent = f"french-cities-{uuid4()}"
+    geolocator = Nominatim(user_agent=user_agent)
+    geocode = RateLimiter(
+        partial(
+            geolocator.geocode,
+            language="fr",
+            country_codes="fr",
+            featuretype="settlement ",
+        ),
+        min_delay_seconds=1,
+    )
+
+    logger.info(
+        "Nominatim API will perform requests at a rate of one request "
+        f"per second : this task will need around {len(look_for)}s."
+    )
+
+    results = look_for["query"].apply(geocode)
+    look_for = look_for.assign(results=results)
+    ix = look_for[look_for.results.notnull()].index
+    for f in ["latitude", "longitude"]:
+        look_for.loc[ix, f] = look_for.loc[ix, "results"].apply(
+            lambda loc: getattr(loc, f)
+        )
+
+    look_for = _find_from_geoloc(
+        epsg=4326,
+        df=look_for,
+        year=year,
+        x="longitude",
+        y="latitude",
+        field_output=alias,
+    )
+    look_for = look_for.drop(["latitude", "longitude", "results"], axis=1)
+    return look_for
+
+
+def _find_from_fuzzymatch_cities_names(
+    year: str, look_for: pd.DataFrame, alias: str
+) -> pd.DataFrame:
+    """
+    Use fuzzy matching to retrieve cities from their names to find best
+    candidates.
+
+    Parameters
+    ----------
+    year : str
+        Desired vintage ("last" or castable to int)
+    look_for : pd.DataFrame
+        DataFrame cities (expected columns are "city_cleaned" & "dep") we are
+        trying to find a match to
+    alias : str
+        field to use to store the positive matches' codes into the returned
+        datafram
+
+    Returns
+    -------
+    match : pd.DataFrame
+        DataFrame of positive matches (ie look_for + one mor column under the
+        label `alias`)
+
+    """
+    init_pynsee()
+
+    df = get_area_list("communes", date="*")
+    df["TITLE_SHORT"] = (
+        df["TITLE_SHORT"]
+        .str.upper()
+        .apply(unidecode)
+        .str.split(r"\W+")
+        .str.join(" ")
+        .str.strip(" ")
+    )
+    df = df.loc[:, ["TITLE_SHORT", "CODE"]]
+
+    df = find_departements(df, source="CODE", alias="dep", type_code="insee")
+    df = df.drop_duplicates(["TITLE_SHORT", "dep"])
+    df = df.reset_index(drop=False)
+
+    results = []
+    for dep in look_for["dep"].unique():
+        ix1 = look_for[look_for.dep == dep].index
+        ix2 = df[df.dep == dep].index
+        match_ = pd.DataFrame(
+            cdist(
+                look_for.loc[ix1, "city_cleaned"],
+                df.loc[ix2, "TITLE_SHORT"],
+                score_cutoff=80,
+                workers=-1,
+            ),
+            index=ix1,
+            columns=df.loc[ix2, "CODE"],
+            # index=look_for.loc[ix1, "city_cleaned"],
+            # columns=df.loc[ix2, "TITLE_SHORT"],
+        ).replace(0, np.nan)
+        # print(match_)
+
+        try:
+            results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
+        except ValueError:
+            continue
+
+    results = pd.concat(results, ignore_index=False).sort_index()
+
+    try:
+        year = int(year)
+    except ValueError:
+        year = date.today().year
+    results = set_vintage(results.to_frame("CODE"), year, "CODE")
+
+    results = look_for.join(results)
+
+    results = results.rename({"CODE": alias}, axis=1)
+    return results
+
+
+def _find_from_geoloc(
+    epsg: int,
+    df: pd.DataFrame,
+    year: str = "last",
+    x: str = "x",
+    y: str = "y",
+    field_output: str = "insee_com",
+) -> pd.DataFrame:
+    """
+    Find cities codes from coordinates using a spatial join.
+
+    Note that the result will be approximative as the IGN's WFS data is not
+    vintaged (yet ?). The spatial join will then be computed against latest
+    available data. A reprojection in the desired vintage will be done
+    afterwards, but cities joined during this lapse time will NOT be correctly
+    found.
+
+    Parameters
+    ----------
+    epsg : int
+        EPSG code of projection
+    df : pd.DataFrame
+        input DataFrame. Must have an 'x' and an 'y' columns containing points
+    year : str, optional
+        Desired vintage for cities; must a castable value to int or "last".
+        The default is "last".
+    x : str, optional
+        Field (column) containing the x coordinates values. Set to False if
+        not available. The default is "x".
+    y : str, optional
+        Field (column) containing the y coordinates values. Set to False if
+        not available. The default is "y".
+    field_output : str, optional
+        Column to store the cities code into. The default is "insee_com".
+
+    Raises
+    ------
+    ValueError
+        If year not castable to int, or not "last".
+
+    Returns
+    -------
+    df : pd.DataFrame
+        output DataFrame with `field_output` containing cities' codes
+
+    """
+
+    logger.info("find city through geolocation...")
+
+    if year != "last":
+        try:
+            int(year)
+        except ValueError:
+            raise ValueError(
+                "year should either be castable to int or 'last', "
+                f"found {year} instead"
+            )
+
+    if str(year) not in {str(date.today().year), "last"}:
+        logger.warning(
+            "As of yet, ADMINEXPRESS can't be fetched with a vintage "
+            "setting: the querying of cities using coordinates WILL have "
+            "approximative results."
+        )
+
+    com = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
+    com = gpd.GeoDataFrame(com).set_crs("EPSG:3857")
+
+    transformer = Transformer.from_crs(epsg, 3857, accuracy=1, always_xy=True)
+
+    temp = transformer.transform(df[x].tolist(), df[y].tolist())
+    temp = gpd.GeoSeries(
+        gpd.points_from_xy(x=temp[0], y=temp[1], crs=3857),
+        name="geometry",
+        index=df.index,
+    )
+
+    df = gpd.GeoDataFrame(temp.to_frame().join(df), crs=3857)
+    rename = {"insee_com": field_output}
+    df = df.sjoin(
+        com[["insee_com", "geometry"]].rename(rename, axis=1), how="left"
+    )
+    df = df.drop(["geometry", "index_right"], axis=1)
+
+    if year not in {str(date.today().year), "last"}:
+        year = int(year)
+        df = set_vintage(df, year, field_output)
     return df
 
 
