@@ -353,7 +353,7 @@ def find_city(
         addresses = addresses.drop("full", axis=1)
     except KeyError:
         pass
-    addresses = addresses.drop_duplicates()
+    addresses = addresses.drop_duplicates(components_kept)
 
     df = df.reset_index(drop=False).merge(
         addresses.replace("", np.nan), how="left", on=components_kept
