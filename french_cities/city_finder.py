@@ -32,7 +32,7 @@ from french_cities.utils import init_pynsee
 logger = logging.getLogger(__name__)
 
 
-def combine(df: pd.DataFrame, columns: list) -> pd.Series:
+def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
     """
     coalesce multiple columns (first not null encountered from left to right
     is kept) and return the result as pd.Series
@@ -46,7 +46,7 @@ def combine(df: pd.DataFrame, columns: list) -> pd.Series:
     return s
 
 
-def _nominatim_geolocation(
+def _find_with_nominatim_geolocation(
     year: str, look_for: pd.DataFrame, alias: str
 ) -> pd.DataFrame:
     """
@@ -83,7 +83,7 @@ def _nominatim_geolocation(
             geolocator.geocode,
             language="fr",
             country_codes="fr",
-            featuretype="city",
+            featuretype="settlement ",
         ),
         min_delay_seconds=1,
     )
@@ -113,7 +113,7 @@ def _nominatim_geolocation(
     return look_for
 
 
-def _fuzzy_match_cities_names(
+def _find_from_fuzzymatch_cities_names(
     year: str, look_for: pd.DataFrame, alias: str
 ) -> pd.DataFrame:
     """
@@ -493,14 +493,16 @@ def find_city(
     ix = addresses[addresses["candidat_0"].isnull()].index
     if len(ix) > 0:
         missing = addresses.loc[ix, [dep, "city_cleaned"]]
-        missing = _fuzzy_match_cities_names(year, missing, "candidat_missing")
+        missing = _find_from_fuzzymatch_cities_names(
+            year, missing, "candidat_missing"
+        )
         addresses = addresses.merge(
             missing, on=[dep, "city_cleaned"], how="left"
         )
         addresses = addresses.drop_duplicates()
 
         candidats = ["candidat_0", "candidat_missing"]
-        addresses["candidat_0"] = combine(addresses, candidats)
+        addresses["candidat_0"] = _combine(addresses, candidats)
         addresses = addresses.drop("candidat_missing", axis=1)
 
     for k, (components, type_ban_search) in enumerate(to_test_ok):
@@ -544,14 +546,13 @@ def find_city(
             list_map(addresses.fillna("").copy(), components).to_frame("full")
         )
 
-        results_api = _post_to_ban_csv_geocoder(
-            addresses=addresses,
+        results_api = _query_BAN_csv_geocoder(
+            addresses=temp_addresses,
             components=components,
             session=session,
-            temp_addresses=temp_addresses,
             dep=dep,
         )
-        addresses = filter_api_results(
+        addresses = _filter_BAN_results(
             results_api=results_api,
             session=session,
             rename_candidat=f"candidat_{k+1}",
@@ -574,14 +575,13 @@ def find_city(
                 # Try to use individual geocoding specifying target type
                 # (ie. "municipality" to get better results)
 
-                results_api = _post_to_ban_individual_geocoder(
+                results_api = _query_BAN_individual_geocoder(
                     addresses=addresses.loc[ix],
                     components=components,
                     session=session,
-                    temp_addresses=temp_addresses,
                     dep=dep,
                 )
-                addresses = filter_api_results(
+                addresses = _filter_BAN_results(
                     results_api=results_api,
                     session=session,
                     rename_candidat=f"candidat_{k+1}",
@@ -593,7 +593,7 @@ def find_city(
     candidats = sorted(
         [x for x in addresses.columns if x.startswith("candidat")]
     )
-    addresses["best"] = combine(addresses, candidats)
+    addresses["best"] = _combine(addresses, candidats)
     addresses = addresses.drop(candidats, axis=1)
     try:
         addresses = addresses.drop("full", axis=1)
@@ -604,7 +604,7 @@ def find_city(
     df = df.reset_index(drop=False).merge(
         addresses.replace("", np.nan), how="left", on=components_kept
     )
-    df["best"] = combine(df, ["candidat_0", "best"])
+    df["best"] = _combine(df, ["candidat_0", "best"])
     df = df.drop("candidat_0", axis=1)
 
     # Where still no results, give a go at individual requests through geopy
@@ -625,7 +625,7 @@ def find_city(
             missing = missing.drop(ix_empty_query)
             if missing.empty:
                 continue
-            missing = _nominatim_geolocation(
+            missing = _find_with_nominatim_geolocation(
                 year=year,
                 look_for=missing[["query"]],
                 alias="insee_com_nominatim",
@@ -650,7 +650,7 @@ def find_city(
                 on=[use, "city_cleaned"],
                 how="left",
             )
-            df["best"] = combine(df, ["best", "insee_com_nominatim"])
+            df["best"] = _combine(df, ["best", "insee_com_nominatim"])
             df = df.drop("insee_com_nominatim", axis=1)
 
     df = df.drop("city_cleaned", axis=1)
@@ -660,20 +660,41 @@ def find_city(
     return df
 
 
-def _post_to_ban_csv_geocoder(
+def _query_BAN_csv_geocoder(
     addresses: pd.DataFrame,
     components: list,
     session: Session,
-    temp_addresses: pd.DataFrame,
     dep: str,
 ) -> pd.DataFrame:
+    """
+    Query the adresse API (BAN = Base Adresse Nationale) CSV geocoder.
+
+    Parameters
+    ----------
+    addresses : pd.DataFrame
+        Addresses to query the API from.
+    components : list
+        List of components used for constituting the addresses (used for
+        debugging purposes only)
+    session : Session
+        Web session
+    dep : str
+        Column label containing the departements' codes
+
+    Returns
+    -------
+    results_api : pd.DataFrame
+        DataFrame (same as original + columns ['result_score', 'result_city',
+        'result_citycode'])
+
+    """
     # Use the BAN's CSV geocoder
     logger.info(f"request BAN with CSV geocoder and {components}...")
 
     r = session.post(
         "https://api-adresse.data.gouv.fr/search/csv/",
         files=[
-            ("data", temp_addresses.to_csv(index=False)),
+            ("data", addresses.to_csv(index=False)),
             ("type", (None, "municipality")),
             ("result_columns", (None, "full")),
             ("result_columns", (None, "result_score")),
@@ -695,20 +716,47 @@ def _post_to_ban_csv_geocoder(
             ["full", "result_score", "result_city", "result_citycode"],
         ]
         .merge(
-            temp_addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+            addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
             on="full",
         )
     )
     return results_api
 
 
-def _post_to_ban_individual_geocoder(
+def _query_BAN_individual_geocoder(
     addresses: pd.DataFrame,
     components: list,
     session: Session,
-    temp_addresses: pd.DataFrame,
     dep: str,
+    threads: int = 10,
 ) -> pd.DataFrame:
+    """
+    Query the adresse API (BAN = Base Adresse Nationale) individual geocoder,
+    specifying the output type as municipality (this parameter being not
+    available through the CSV mass geocoder). Uses multithreading as no
+    quota are not used by this API.
+
+    Parameters
+    ----------
+    addresses : pd.DataFrame
+        Addresses to query the API from.
+    components : list
+        List of components used for constituting the addresses (used for
+        debugging purposes only)
+    session : Session
+        Web session
+    dep : str
+        Column label containing the departements' codes
+    threads : int, optional
+        Number of threads to use. Default is 10.
+
+    Returns
+    -------
+    results_api : pd.DataFrame
+        DataFrame (same as original + columns ['result_score', 'result_city',
+        'result_citycode'])
+
+    """
     # Use the BAN's individual geocoder
 
     # revert to multiple queries of BAN, see issue here:
@@ -740,7 +788,7 @@ def _post_to_ban_individual_geocoder(
     args = addresses.full.tolist()
     results = []
     with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
-        with ThreadPool(10) as pool:
+        with ThreadPool(threads) as pool:
             future = pool.map(get, args)
             results_iterator = future.result()
             while True:
@@ -753,7 +801,7 @@ def _post_to_ban_individual_geocoder(
                 finally:
                     pbar.update(1)
 
-    logger.info("résultat obtenu")
+    logger.info("results collected")
 
     results_api = (
         gpd.GeoDataFrame.from_features(np.array(results).flatten())
@@ -774,9 +822,50 @@ def _post_to_ban_individual_geocoder(
     return results_api
 
 
-def filter_api_results(
-    results_api, session, rename_candidat, addresses
+def _filter_BAN_results(
+    results_api: pd.DataFrame,
+    session: Session,
+    rename_candidat: str,
+    addresses: pd.DataFrame,
+    fuzzymatch_threshold: int = 80,
+    ban_score_threshold_city_known: float = 0.6,
+    ban_score_threshold_city_unknown: float = 0.4,
 ) -> pd.DataFrame:
+    """
+    Filters the BAN results to keep best results according to specific
+    criteria. Results will be kept if :
+        - they match expected departement
+        - and :
+            * if you get a good fuzzy match on city name
+            * or if the BAN gives a good score, the city label being known
+            * or if the BAN gives a goodish score, the city label being unknown
+
+    Parameters
+    ----------
+    results_api : pd.DataFrame
+        Adresse API results
+    session : Session
+        Web session
+    rename_candidat : str
+        Columnn to rename the results to.
+    addresses : pd.DataFrame
+        Full DataFrame of address to store the kept results into.
+    fuzzymatch_threshold : int, optional
+        The fuzzy match score threshold (on city labels) to keep the results.
+        Default is 80.
+    ban_score_threshold_city_known : float, optional
+        The API score threshold to keep results, the city label being known.
+        Default is 0.6.
+    ban_score_threshold_city_unknown : float, optional
+        The API score threshold to keep results, the city label being unknown.
+        Default is 0.4.
+
+    Returns
+    -------
+    addresses : pd.DataFrame
+        Consolidated DataFrame of address with selected results.
+
+    """
     # Control results : same department
     results_api = find_departements(
         results_api, "result_citycode", "result_dep", "insee", session
@@ -801,17 +890,20 @@ def filter_api_results(
 
     ix = results_api[
         # Either a good fuzzy match
-        ((results_api["city_cleaned"] != "") & (results_api["score"] > 80))
+        (
+            (results_api["city_cleaned"] != "")
+            & (results_api["score"] > fuzzymatch_threshold)
+        )
         # Or a goodish match on BAN (case of cities fusion, city
         # neighborhoods, ski stations...):
         | (
             (results_api["city_cleaned"] != "")
-            & (results_api["result_score"] > 0.6)
+            & (results_api["result_score"] > ban_score_threshold_city_known)
         )
         # Or a goodish match on BAN but no available city label:
         | (
             (results_api["city_cleaned"] == "")
-            & (results_api["result_score"] > 0.4)
+            & (results_api["result_score"] > ban_score_threshold_city_unknown)
         )
     ].index
 
