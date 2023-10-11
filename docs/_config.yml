@@ -1,2 +1,8 @@
 name: french-cities documentation
 theme: minima
+
+languages: ["en", "fr"]
+defaultLang: en
+languageNames:
+  fr: Français
+  en: English
