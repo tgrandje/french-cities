@@ -28,7 +28,7 @@ the credentials up. You can set up to four environment variables:
 * http_proxy (if accessing web behind a corporate proxy)
 * https_proxy (if accessing web behind a corporate proxy)
 
-Please refer to [`pynsee`'s documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
+Please refer to [`pynsee's documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
 to help configure the API's access.
 
 Note that setting environment variable for proxy will set it for both `pynsee`
