@@ -1,3 +1,7 @@
+layout: page
+title: "Documentation (Français)"
+permalink: /fr
+
 # french-cities
 Boîte à outils sur les communes françaises : millésimage, reconnaissance de 
 départements ou de communes...

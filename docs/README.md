@@ -1,3 +1,7 @@
+layout: page
+title: "Documentation (English)"
+permalink: /en
+
 # french-cities
 Toolbox on french cities: set vintage, find departments, find cities...
 
