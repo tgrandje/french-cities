@@ -1,8 +1,0 @@
-site:
-  name: French-cities
-  description: Documentation du package french-cities
-
-main:
-  welcomeSection:
-    anchor: bienvenue
-    heading: Documentation du package french-cities
