@@ -21,6 +21,7 @@ from functools import partial
 from uuid import uuid4
 from tqdm import tqdm
 from pebble import ThreadPool
+
 try:
     from geopy.extra.rate_limiter import RateLimiter
     from geopy.geocoders import Nominatim
@@ -468,7 +469,7 @@ def _find_with_nominatim_geolocation(
             "to use Nominatim geocoder with: pip install french-cities[full]"
         )
         return pd.DataFrame()
-        
+
     geocode = RateLimiter(
         partial(
             geolocator.geocode,
