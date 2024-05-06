@@ -46,12 +46,6 @@ jobs:
         run: poetry install --no-interaction --without dev --extras "full"
         
       #----------------------------------------------
-      # remove standard pynsee
-      #----------------------------------------------
-      - name: Remove pynsee branch
-        run: poetry run pip uninstall pynsee --yes
-        
-      #----------------------------------------------
       # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
       - name: Add pytest
