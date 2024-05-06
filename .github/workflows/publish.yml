@@ -56,12 +56,6 @@ jobs:
       #----------------------------------------------
       - name: Add pytest-cov
         run: poetry run pip install pytest-cov
-        
-      #----------------------------------------------
-      # install pynsee correct branch
-      #----------------------------------------------
-      - name: Install pynsee branch
-        run: poetry run pip install git+https://github.com/InseeFrLab/pynsee
 
       #----------------------------------------------
       #              run test suite
