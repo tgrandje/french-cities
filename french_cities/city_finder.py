@@ -573,7 +573,12 @@ def _find_from_fuzzymatch_cities_names(
         # print(match_)
 
         try:
-            results.append(pd.Series(match_.idxmax(axis=1), index=ix1))
+            results.append(
+                pd.Series(
+                    match_.dropna(how="all", axis=1).idxmax(axis=1),
+                    index=ix1,
+                )
+            )
         except ValueError:
             continue
 
@@ -728,21 +733,25 @@ def _query_BAN_csv_geocoder(
 
     logger.info("résultat obtenu")
 
-    results_api = (
-        pd.read_csv(
-            io.BytesIO(r.content),
-            dtype={"dep": str, "result_citycode": str},
+    try:
+        results_api = (
+            pd.read_csv(
+                io.BytesIO(r.content),
+                dtype={"dep": str, "result_citycode": str},
+            )
+            .drop_duplicates()
+            .loc[
+                :,
+                ["full", "result_score", "result_city", "result_citycode"],
+            ]
+            .merge(
+                addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+                on="full",
+            )
         )
-        .drop_duplicates()
-        .loc[
-            :,
-            ["full", "result_score", "result_city", "result_citycode"],
-        ]
-        .merge(
-            addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
-            on="full",
-        )
-    )
+    except Exception:
+        logger.error(r.content)
+        raise
     return results_api
 
 
