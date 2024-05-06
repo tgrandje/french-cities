@@ -91,6 +91,10 @@ def _get_cities_year(year: int) -> pd.DataFrame:
     """
     date = f"{year}-01-01"
     cog = get_area_list(area="communes", date=date)
+    try:
+        cog = cog.drop("DATE_DELETION", axis=1)
+    except KeyError:
+        pass
     cog = cog.drop(
         [
             "URI",
@@ -181,6 +185,10 @@ def _get_subareas_year(
     """
     date = f"{year}-01-01"
     subareas = get_area_list(area=type_, date=date)
+    try:
+        subareas = subareas.drop("DATE_DELETION", axis=1)
+    except KeyError:
+        pass
     drop = [
         "URI",
         "AREA_TYPE",
@@ -190,6 +198,7 @@ def _get_subareas_year(
         "TITLE_SHORT",
     ]
     subareas = subareas.drop(drop, axis=1)
+
     if look_for:
         subareas = subareas[subareas.CODE.isin(look_for)]
     if subareas.empty:
@@ -244,7 +253,9 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     cities = _get_cities_year_full(year, set(uniques[field]))
 
     # Uptodate cities (cities, municipal districts, delegated cities, ...)
-    uniques = uniques.merge(cities, left_on=field, right_on="CODE", how="left")
+    uniques = uniques.merge(
+        cities, left_on=field, right_on="CODE", how="left"
+    )
     uniques = uniques.rename({"NEW_CODE": "PROJECTED"}, axis=1)
 
     # Obsolete cities : merge, etc. : look for projection starting from an old
@@ -267,6 +278,10 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
             df = get_area_projection(
                 code=x, area="commune", date=date_init, dateProjection=date
             )
+            try:
+                df = df.drop("DATE_DELETION", axis=1)
+            except (KeyError, AttributeError):
+                pass
             logging.disable(previous_level)
 
             if df is not None:
