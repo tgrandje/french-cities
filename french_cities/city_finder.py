@@ -719,17 +719,21 @@ def _query_BAN_csv_geocoder(
     # Use the BAN's CSV geocoder
     logger.info(f"request BAN with CSV geocoder and {components}...")
 
+    files = [
+        ("data", addresses.to_csv(index=False)),
+        ("type", (None, "municipality")),
+        ("result_columns", (None, "full")),
+        ("result_columns", (None, "result_score")),
+        ("result_columns", (None, "result_city")),
+        ("result_columns", (None, "result_citycode")),
+    ]
+
     r = session.post(
         "https://api-adresse.data.gouv.fr/search/csv/",
-        files=[
-            ("data", addresses.to_csv(index=False)),
-            ("type", (None, "municipality")),
-            ("result_columns", (None, "full")),
-            ("result_columns", (None, "result_score")),
-            ("result_columns", (None, "result_city")),
-            ("result_columns", (None, "result_citycode")),
-        ],
+        files=files,
     )
+    if not r.ok:
+        raise Exception(f"Failed to query BAN's API with {files=}")
 
     logger.info("résultat obtenu")
 
@@ -750,8 +754,10 @@ def _query_BAN_csv_geocoder(
             )
         )
     except Exception:
-        logger.error(r.content)
-        raise
+        raise ValueError(
+            "Failed to parse BAN's return with following content :\n\n"
+            f"{r.content}"
+        )
     return results_api
 
 
