@@ -733,7 +733,9 @@ def _query_BAN_csv_geocoder(
         files=files,
     )
     if not r.ok:
-        raise Exception(f"Failed to query BAN's API with {files=}")
+        raise Exception(
+            f"Failed to query BAN's API with {files=} - response was {r}"
+        )
 
     logger.info("résultat obtenu")
 
