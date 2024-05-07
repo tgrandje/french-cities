@@ -12,18 +12,58 @@ input_df = pd.DataFrame(
         "code_commune": ["59350", "97701", "2A004", "68066"],
         "communes": ["Lille", "Saint-Barthélémy", "Ajaccio", "Colmar Cedex"],
         "deps": ["59", "977", "2A", "68"],
-        
     }
 )
+
+
+class MockedResponse:
+    ok = True
+    content = (
+        b"code_postal,result_context\r\n"
+        b'59800,"59, Nord, Hauts-de-France"\r\n'
+        b'97133,"977, Saint-Barth\xc3\xa9lemy"\r\n'
+        b'20000,"2A, Corse-du-Sud, Corse"\r\n'
+        b"68013,\r\n"
+    )
+
+    def json(self):
+        return {
+            "total_count": 1,
+            "results": [
+                {
+                    "insee": "68066",
+                    "libelle": "COLMAR CEDEX",
+                    "nom_com": "Colmar",
+                }
+            ],
+        }
+
+
+class MockedSession:
+    def post(self, *args, **kwargs):
+        return MockedResponse()
+
+    def get(self, *args, **kwargs):
+        return MockedResponse()
 
 
 class test_find_departements(TestCase):
     def test_from_post(self):
         test = find_departements(
-            input_df, "code_postal", "dep_test", "postcode"
+            input_df,
+            "code_postal",
+            "dep_test",
+            "postcode",
+            session=MockedSession(),
         )
         assert (test["dep_test"] == test["deps"]).all()
 
     def test_from_insee(self):
-        test = find_departements(input_df, "code_commune", "dep_test", "insee")
+        test = find_departements(
+            input_df,
+            "code_commune",
+            "dep_test",
+            "insee",
+            session=MockedSession(),
+        )
         assert (test["dep_test"] == test["deps"]).all()

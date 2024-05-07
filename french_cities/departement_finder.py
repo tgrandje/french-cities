@@ -50,23 +50,31 @@ def _process_departements_from_postal(
 
     if not session:
         session = CachedSession(
-            allowable_methods=("GET", "POST"), expire_after=timedelta(days=30)
+            allowable_methods=("GET", "POST"),
+            expire_after=timedelta(days=30),
         )
 
     postal_codes = df[[source]].drop_duplicates(keep="first")
+    files = [
+        ("data", postal_codes.to_csv(index=False)),
+        ("postcode", (None, source)),
+        ("result_columns", (None, source)),
+        ("result_columns", (None, "result_context")),
+    ]
     r = session.post(
         # recherche grâce à l'API de la BAN
         "https://api-adresse.data.gouv.fr/search/csv/",
-        files=[
-            ("data", postal_codes.to_csv(index=False)),
-            ("postcode", (None, source)),
-            ("result_columns", (None, source)),
-            ("result_columns", (None, "result_context")),
-        ],
+        files=files,
     )
+    if not r.ok:
+        raise Exception(
+            f"Failed to query BAN's API with {files=} - response was {r}"
+        )
     result = pd.read_csv(io.BytesIO(r.content), dtype=str)
     result[alias] = (
-        result["result_context"].str.split(",", expand=True)[0].str.strip(" ")
+        result["result_context"]
+        .str.split(",", expand=True)[0]
+        .str.strip(" ")
     )
     result = result.drop("result_context", axis=1)
 
@@ -152,7 +160,9 @@ def _process_departements_from_postal(
             ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
 
             results_cedex = results_cedex.sort_values([source, "score"])
-            results_cedex = results_cedex.drop_duplicates(source, keep="last")
+            results_cedex = results_cedex.drop_duplicates(
+                source, keep="last"
+            )
             results_cedex = results_cedex.drop(
                 ["nom_com", "score", "libelle"], axis=1
             )
