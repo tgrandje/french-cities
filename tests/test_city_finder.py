@@ -3,8 +3,10 @@
 Created on Tue Jul 11 09:20:26 2023
 """
 from unittest import TestCase
+from unittest.mock import patch
 import pandas as pd
 import numpy as np
+from requests import session
 
 from french_cities.city_finder import find_city
 
@@ -144,7 +146,66 @@ input_df = pd.DataFrame(
     index=[10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
 )
 
-output_df = find_city(input_df.copy(), epsg=4326, use_nominatim_backend=True)
+
+class MockedResponse:
+    ok = True
+    content = (
+        b"dep,city_cleaned,postcode,address,full,result_score,result_city,"
+        b"result_citycode\r\n"
+        b"74,AVORIAZ,,,74 AVORIAZ,0.35677393939393937,Morzine,74191\r\n"
+    )
+
+    def json(self):
+        return {
+            "type": "FeatureCollection",
+            "version": "draft",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [2.474484, 49.767999],
+                    },
+                    "properties": {
+                        "label": "Morisel",
+                        "score": 0.16301377622377625,
+                        "id": "80571",
+                        "type": "municipality",
+                        "name": "Morisel",
+                        "postcode": "80110",
+                        "citycode": "80571",
+                        "x": 662115.98,
+                        "y": 6963355.46,
+                        "population": 486,
+                        "city": "Morisel",
+                        "context": "80, Somme, Hauts-de-France",
+                        "importance": 0.25469,
+                        "municipality": "Morisel",
+                    },
+                }
+            ],
+            "attribution": "BAN",
+            "licence": "ETALAB-2.0",
+            "query": "74 AVORIAZ",
+            "filters": {"type": "municipality"},
+            "limit": 1,
+        }
+
+
+class MockedSession:
+    def post(self, *args, **kwargs):
+        return MockedResponse()
+
+    def get(self, *args, **kwargs):
+        return MockedResponse()
+
+
+output_df = find_city(
+    input_df.copy(),
+    epsg=4326,
+    use_nominatim_backend=True,
+    session=MockedSession(),
+)
 
 
 class test_find_city(TestCase):
