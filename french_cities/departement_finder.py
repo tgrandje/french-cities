@@ -11,7 +11,8 @@ import logging
 import time
 from tqdm import tqdm
 from pebble import ThreadPool
-from rapidfuzz import fuzz
+from pynsee.localdata import get_area_list
+from rapidfuzz import fuzz, process
 from unidecode import unidecode
 
 from french_cities.utils import init_pynsee
@@ -291,3 +292,61 @@ def find_departements(
     elif type_code == "insee":
         func = _process_departements_from_insee_code
     return func(df, source, alias, session)
+
+
+def find_departements_from_names(
+    df: pd.DataFrame, label: str, alias: str = "DEP_CODE"
+) -> pd.DataFrame:
+    """
+    Retrieve departement's codes from their names.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing official departement's names
+    label : str
+        Field containing the label of the departements
+    alias : str, optional
+        Column to store the departements' codes unto.
+        Default is "DEP_CODE"
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Updated DataFrame with departement's codes
+
+    """
+
+    init_pynsee()
+    candidates = get_area_list("departements")
+    candidates = candidates[["CODE", "TITLE"]]
+    candidates["TITLE"] = (
+        candidates["TITLE"]
+        .apply(unidecode)
+        .str.upper()
+        .str.replace(r"\W+", " ", regex=True)
+    )
+    candidates = dict(candidates[["TITLE", "CODE"]].values)
+    candidates_keys = list(candidates.keys())
+
+    df = df.copy()
+    df["FORMATTED"] = (
+        df[label]
+        .apply(unidecode)
+        .str.upper()
+        .str.replace(r"\W+", " ", regex=True)
+    )
+
+    df[alias] = df["FORMATTED"].apply(
+        lambda x: candidates[
+            process.extractOne(
+                x,
+                candidates_keys,
+                scorer=fuzz.token_set_ratio,
+                score_cutoff=80,
+            )[0]
+        ]
+    )
+    df = df.drop("FORMATTED", axis=1)
+
+    return df

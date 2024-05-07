@@ -4,7 +4,10 @@ from unittest import TestCase
 import pandas as pd
 
 
-from french_cities.departement_finder import find_departements
+from french_cities.departement_finder import (
+    find_departements,
+    find_departements_from_names,
+)
 
 input_df = pd.DataFrame(
     {
@@ -12,6 +15,13 @@ input_df = pd.DataFrame(
         "code_commune": ["59350", "97701", "2A004", "68066"],
         "communes": ["Lille", "Saint-Barthélémy", "Ajaccio", "Colmar Cedex"],
         "deps": ["59", "977", "2A", "68"],
+    }
+)
+
+input_df2 = pd.DataFrame(
+    {
+        "deps": ["Corse sud", "Alpe de Haute-Provence", "Aisne", "Ain"],
+        "codes": ["2A", "04", "02", "01"],
     }
 )
 
@@ -67,3 +77,10 @@ class test_find_departements(TestCase):
             session=MockedSession(),
         )
         assert (test["dep_test"] == test["deps"]).all()
+
+    def test_from_name(self):
+        test = find_departements_from_names(
+            input_df2,
+            "deps",
+        )
+        assert (test["DEP_CODE"] == test["codes"]).all()

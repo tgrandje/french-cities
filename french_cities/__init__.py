@@ -15,5 +15,6 @@ __version__ = version(__package__)
 __all__ = [
     "find_city",
     "find_departements",
+    "find_departements_from_names",
     "set_vintage",
 ]
