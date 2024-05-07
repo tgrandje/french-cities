@@ -3,7 +3,7 @@ name = "french-cities"
 version = "0.2.1"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
-license = "MIT"
+license = "GPL-3.0-or-later"
 readme = ["README.md", "README.fr.md"]
 homepage = "https://github.com/tgrandje/french-cities/"
 repository = "https://github.com/tgrandje/french-cities/"
@@ -40,6 +40,7 @@ full = ["geopy"]
 [tool.poetry.group.dev.dependencies]
 spyder = "^5.4.3"
 pytest = "^7.4.0"
+licensecheck = "^2024.2"
 
 [build-system]
 requires = ["poetry-core"]
