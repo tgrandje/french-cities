@@ -250,10 +250,12 @@ def find_city(
     # cities (using dep & city) using fuzzy matching
     ix = addresses[addresses["candidat_0"].isnull()].index
     if len(ix) > 0:
-        missing = addresses.loc[ix, [dep, "city_cleaned"]]
+        missing = addresses.loc[ix, [dep, "city_cleaned"]].rename(
+            {dep: "#dep#"}, axis=1
+        )
         missing = _find_from_fuzzymatch_cities_names(
             year, missing, "candidat_missing"
-        )
+        ).rename({"#dep#": dep}, axis=1)
         addresses = addresses.merge(
             missing, on=[dep, "city_cleaned"], how="left"
         )
@@ -319,6 +321,7 @@ def find_city(
             session=session,
             rename_candidat=f"candidat_{k+1}",
             addresses=addresses,
+            dep=dep,
         )
 
         if type_ban_search == "municipality":
@@ -348,6 +351,7 @@ def find_city(
                     session=session,
                     rename_candidat=f"candidat_{k+1}",
                     addresses=addresses,
+                    dep=dep,
                 )
 
     # Proceed in two steps to keep best result (in case there are results from
@@ -555,8 +559,8 @@ def _find_from_fuzzymatch_cities_names(
     df = df.reset_index(drop=False)
 
     results = []
-    for dep in look_for["dep"].unique():
-        ix1 = look_for[look_for.dep == dep].index
+    for dep in look_for["#dep#"].unique():
+        ix1 = look_for[look_for["#dep#"] == dep].index
         ix2 = df[df.dep == dep].index
         match_ = pd.DataFrame(
             cdist(
@@ -567,15 +571,14 @@ def _find_from_fuzzymatch_cities_names(
             ),
             index=ix1,
             columns=df.loc[ix2, "CODE"],
-            # index=look_for.loc[ix1, "city_cleaned"],
-            # columns=df.loc[ix2, "TITLE_SHORT"],
         ).replace(0, np.nan)
-        # print(match_)
 
         try:
             results.append(
                 pd.Series(
-                    match_.dropna(how="all", axis=1).idxmax(axis=1),
+                    match_.dropna(how="all", axis=1)
+                    .dropna(how="all")
+                    .idxmax(axis=1),
                     index=ix1,
                 )
             )
@@ -867,6 +870,7 @@ def _filter_BAN_results(
     session: Session,
     rename_candidat: str,
     addresses: pd.DataFrame,
+    dep: str = "dep",
     fuzzymatch_threshold: int = 80,
     ban_score_threshold_city_known: float = 0.6,
     ban_score_threshold_city_unknown: float = 0.4,
@@ -890,6 +894,9 @@ def _filter_BAN_results(
         Columnn to rename the results to.
     addresses : pd.DataFrame
         Full DataFrame of address to store the kept results into.
+    dep : str, optional
+        Field (column) containing the department values. Set to False if
+        not available. The default is "dep".
     fuzzymatch_threshold : int, optional
         The fuzzy match score threshold (on city labels) to keep the results.
         Default is 80.
@@ -910,7 +917,7 @@ def _filter_BAN_results(
     results_api = find_departements(
         results_api, "result_citycode", "result_dep", "insee", session
     )
-    ix = results_api[results_api.dep == results_api.result_dep].index
+    ix = results_api[results_api[dep] == results_api.result_dep].index
     results_api = results_api.loc[ix]
 
     if results_api.empty:

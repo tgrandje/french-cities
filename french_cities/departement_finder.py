@@ -342,7 +342,7 @@ def find_departements_from_names(
             process.extractOne(
                 x,
                 candidates_keys,
-                scorer=fuzz.token_set_ratio,
+                scorer=fuzz.ratio,
                 score_cutoff=80,
             )[0]
         ]

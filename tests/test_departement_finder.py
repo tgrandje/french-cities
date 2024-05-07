@@ -20,8 +20,15 @@ input_df = pd.DataFrame(
 
 input_df2 = pd.DataFrame(
     {
-        "deps": ["Corse sud", "Alpe de Haute-Provence", "Aisne", "Ain"],
-        "codes": ["2A", "04", "02", "01"],
+        "deps": [
+            "Charente-Maritime",
+            "Seine-et-Marne",
+            "Corse sud",
+            "Alpe de Haute-Provence",
+            "Aisne",
+            "Ain",
+        ],
+        "codes": ["17", "77", "2A", "04", "02", "01"],
     }
 )
 
