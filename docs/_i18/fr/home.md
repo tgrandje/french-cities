@@ -11,15 +11,6 @@ départements ou de communes...
 
 `pip install french-cities[full]`
 
-Notez qu'à cette heure, `pynsee` ne supporte pas les projections de codes commune. 
-Dans l'immédiat, après avoir installé `french-cities` depuis pypi, il faut donc
-désinstaller `pynsee` puis réinstaller la version master courante depuis son repo 
-github :
-```
-pip uninstall pynsee
-pip install git+https://github.com/InseeFrLab/pynsee
-```
-
 L'installation "full" permet d'installer geopy qui est une dépendance 
 optionnelle utilisable en dernier ressort.
 
@@ -99,9 +90,26 @@ df = find_departements(df, source="code_commune", alias="dep_B", type_code="inse
 print(df)
 ```
 
-Pour une documentation complète sur la fonction `find_departements`, merci 
-d'utiliser la commande suivante :
-`help(find_departements)`.
+On peut également travailler directement à partir des noms de départements,
+en utilisant à la place la fonction `find_departements_from_names` :
+
+```
+from french_cities import find_departements_from_names
+import pandas as pd
+
+df = pd.DataFrame(
+    {
+        "deps": ["Corse sud", "Alpe de Haute-Provence", "Aisne", "Ain"],
+    }
+)
+df = find_departements_from_names(df, label="deps")
+
+print(df)
+```
+
+Pour une documentation complète sur les fonctions `find_departements` ou
+`find_departements_from_names`, merci d'utiliser les commandes suivantes : 
+`help(find_departements)` ou `help(find_departements_from_names)`.
 
 ### Trouver les codes communes
 `french-cities` peut retrouver le code commune à partir de champs multiples.

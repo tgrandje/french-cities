@@ -1,2 +1,11 @@
-name: french-cities documentation
 theme: minima
+
+plugins:
+  - jekyll-multiple-languages-plugin
+
+languages: ["fr", "en"]
+defaultLang: fr
+languageNames:
+  fr: French
+  en: English
+  

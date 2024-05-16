@@ -10,14 +10,6 @@ Toolbox on french cities: set vintage, find departments, find cities...
 
 `pip install french-cities[full]`
 
-Note that at this instant, `pynsee` doesn't support communal projection.
-After installing `french-cities` from pypi, please uninstall pynsee and replace
-it with the current master:
-```
-pip uninstall pynsee
-pip install git+https://github.com/InseeFrLab/pynsee
-```
-
 Note that the "full" installation will also install geopy, which might use
 Nominatim API for city recognition as a last resort.
 
@@ -94,8 +86,26 @@ df = find_departements(df, source="code_commune", alias="dep_B", type_code="inse
 print(df)
 ```
 
-For a complete documentation on `find_departements`, please type 
-`help(find_departements)`.
+One can also work directly from departement's names, using 
+`find_departements_from_names` instead :
+
+```
+from french_cities import find_departements_from_names
+import pandas as pd
+
+df = pd.DataFrame(
+    {
+        "deps": ["Corse sud", "Alpe de Haute-Provence", "Aisne", "Ain"],
+    }
+)
+df = find_departements_from_names(df, label="deps")
+
+print(df)
+```
+
+For a complete documentation on `find_departements` or 
+`find_departements_from_names`, please type `help(find_departements)` or
+`help(find_departements_from_names)`.
 
 ### Retrieve cities' codes
 `french-cities` can retrieve cities' codes from multiple fields. It will work
