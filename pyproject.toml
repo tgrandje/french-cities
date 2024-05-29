@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "french-cities"
-version = "0.3.3"
+version = "0.3.4"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "GPL-3.0-or-later"
@@ -41,6 +41,8 @@ full = ["geopy"]
 spyder = "^5.4.3"
 pytest = "^7.4.0"
 licensecheck = "^2024.2"
+pyqt5-qt5 = "5.15.2"
+pyqtwebengine-qt5 = "5.15.2"
 
 [build-system]
 requires = ["poetry-core"]

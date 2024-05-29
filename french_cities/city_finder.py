@@ -31,7 +31,7 @@ except ModuleNotFoundError:
 
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
-from french_cities.utils import init_pynsee
+from french_cities.utils import init_pynsee, patch_the_patch
 
 
 logger = logging.getLogger(__name__)
@@ -196,9 +196,7 @@ def find_city(
             .str.join(" ")
             .str.replace(r"(^|\s)(ST)\s", " SAINT ", regex=True)
             .str.replace(r"(^|\s)(STE)\s", " SAINTE ", regex=True)
-            .str.replace(
-                r"[0-9]* ?EME KM", "", regex=True
-            )  # TAMPON 14EME KM
+            .str.replace(r"[0-9]* ?EME KM", "", regex=True)  # TAMPON 14EME KM
             .str.strip(" ")
             .str.replace(r" ?CEDEX$", "", regex=True)  # LOOS CEDEX -> LOOS
         )
@@ -276,9 +274,7 @@ def find_city(
             np.all(
                 [addresses[col].isnull() for col in cols_candidates], axis=0
             )
-            & np.all(
-                [addresses[col].notnull() for col in components], axis=0
-            )
+            & np.all([addresses[col].notnull() for col in components], axis=0)
         ].index
         if len(ix) == 0:
             addresses[f"candidat_{k+1}"] = np.nan
@@ -305,9 +301,7 @@ def find_city(
         if "full" in set(addresses.columns):
             addresses = addresses.drop("full", axis=1)
         addresses = addresses.join(
-            list_map(addresses.fillna("").copy(), components).to_frame(
-                "full"
-            )
+            list_map(addresses.fillna("").copy(), components).to_frame("full")
         )
 
         results_api = _query_BAN_csv_geocoder(
@@ -667,9 +661,7 @@ def _find_from_geoloc(
     com = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
     com = gpd.GeoDataFrame(com).set_crs("EPSG:3857")
 
-    transformer = Transformer.from_crs(
-        epsg, 3857, accuracy=1, always_xy=True
-    )
+    transformer = Transformer.from_crs(epsg, 3857, accuracy=1, always_xy=True)
 
     temp = transformer.transform(df[x].tolist(), df[y].tolist())
     temp = gpd.GeoSeries(
@@ -731,10 +723,11 @@ def _query_BAN_csv_geocoder(
         ("result_columns", (None, "result_citycode")),
     ]
 
-    r = session.post(
-        "https://api-adresse.data.gouv.fr/search/csv/",
-        files=files,
-    )
+    with patch_the_patch():
+        r = session.post(
+            "https://api-adresse.data.gouv.fr/search/csv/",
+            files=files,
+        )
     if not r.ok:
         raise Exception(
             f"Failed to query BAN's API with {files=} - response was {r}"
@@ -931,9 +924,9 @@ def _filter_BAN_results(
         .str.split(r"\W+")
         .str.join(" ")
     )
-    results_api["score"] = results_api[
-        ["city_cleaned", "result_city"]
-    ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
+    results_api["score"] = results_api[["city_cleaned", "result_city"]].apply(
+        lambda xy: fuzz.token_set_ratio(*xy), axis=1
+    )
 
     ix = results_api[
         # Either a good fuzzy match
@@ -950,10 +943,7 @@ def _filter_BAN_results(
         # Or a goodish match on BAN but no available city label:
         | (
             (results_api["city_cleaned"] == "")
-            & (
-                results_api["result_score"]
-                > ban_score_threshold_city_unknown
-            )
+            & (results_api["result_score"] > ban_score_threshold_city_unknown)
         )
     ].index
 
@@ -967,8 +957,8 @@ def _filter_BAN_results(
         addresses = addresses.drop("result_citycode", axis=1)
 
     else:
-        results_api = results_api.loc[
-            ix, ["full", "result_citycode"]
-        ].rename({"result_citycode": rename_candidat}, axis=1)
+        results_api = results_api.loc[ix, ["full", "result_citycode"]].rename(
+            {"result_citycode": rename_candidat}, axis=1
+        )
         addresses = addresses.merge(results_api, on="full", how="left")
     return addresses
