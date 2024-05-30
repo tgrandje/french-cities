@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 27 20:17:56 2024
-
-@author: utilisateur
+Cas d'usage #1 : après récupération d'un jeu de données quelconque (ici les
+industries classées pour la protection de l'environnement de la région
+Hauts-de-France), l'objectif est de retrouver les codes communes manquants
 """
 
 import os
@@ -53,10 +53,16 @@ data = pd.DataFrame(data)
 # =============================================================================
 # ICPE dépourvues de codes communes INSEE :
 # =============================================================================
+print(data.head())
+print(data.shape)
 print("-" * 50)
 print("Codes INSEE manquants :")
 print(data.codeInsee.isnull().value_counts())
 print("-" * 50)
+
+# =============================================================================
+# Utilisation de french-cities pour trouver les codes communes manquants
+# =============================================================================
 
 missing = data[data.codeInsee.isnull()]
 
@@ -83,6 +89,7 @@ missing = find_city(
     city="commune",
     address="adresse",
     postcode="codePostal",
+    use_nominatim_backend=False,
     field_output="newCodeInsee",
 )
 
@@ -100,6 +107,47 @@ print("-" * 50)
 print("Données toujours manquantes:")
 print(data[data.codeInsee.isnull()])
 
-# data["codes_init"] = data["codeInsee"]
-# data = set_vintage(data, year=date.today().year, field="codeInsee")
-# print(data[data.codes_init != data.codeInsee])
+print(
+    "A date du 30/05/2024, une seule commune n'a pas été trouvée. "
+    "Effectivement, dans ce cas de figure, le lieu-dit (PONT DE BRIQUES) et "
+    "la commune (SAINT ETIENNE AU MONT) ont été inversés : ceci explique "
+    "que le score de la base adresse nationale n'ait pas été jugé "
+    "suffisamment bon pour que le résultat de Saint-Etienne-au-Mont être "
+    "retenu..."
+)
+
+print("-" * 50)
+# =============================================================================
+print(
+    "Si cette fois, on décide d'utiliser l'API Nominatim en dernier "
+    "recours, on obtient :"
+)
+print("-" * 50)
+print("nouvel essai avec Nominatim :")
+missing = data[data.codeInsee.isnull()]
+# Concaténer les champs adresses :
+cols = [f"adresse{x}" for x in range(1, 4)]
+missing["adresse"] = (
+    missing[cols[0]]
+    .str.cat(missing[cols[1:]], sep=" ", na_rep="")
+    .str.replace(" +", " ", regex=True)
+    .str.strip(" ")
+)
+missing = find_city(
+    missing,
+    year="last",
+    x="coordonneeXAIOT",
+    y="coordonneeYAIOT",
+    epsg=2154,
+    city="commune",
+    address="adresse",
+    postcode="codePostal",
+    use_nominatim_backend=True,
+    field_output="newCodeInsee",
+)
+print(missing["newCodeInsee"])
+print(
+    "Nous avons normalement bien récupéré le code INSEE de "
+    "Saint-Etienne-au-Mont : "
+    "https://www.insee.fr/fr/statistiques/2011101?geo=COM-62746"
+)
