@@ -229,6 +229,8 @@ def find_city(
     components_kept = list(
         {field for test_cols, _ in to_test_ok for field in test_cols}
     )
+    for f in components_kept:
+        df[f] = df[f].replace("", np.nan)
 
     addresses = df.loc[:, components_kept + ["candidat_0"]].drop_duplicates()
 
@@ -564,7 +566,7 @@ def _find_from_fuzzymatch_cities_names(
                 workers=-1,
             ),
             index=ix1,
-            columns=df.loc[ix2, "CODE"],
+            columns=df.loc[ix2, ["TITLE_SHORT", "CODE"]],
         ).replace(0, np.nan)
 
         try:
@@ -580,7 +582,7 @@ def _find_from_fuzzymatch_cities_names(
             continue
 
     results = pd.concat(results, ignore_index=False).sort_index()
-
+    results = results.str[1]
     try:
         year = int(year)
     except ValueError:
