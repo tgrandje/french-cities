@@ -63,5 +63,10 @@ default_lang: "fr"
 exclude_from_localization: ["assets/css", "assets/img"]
 parallel_localization: true
 
+logo: "/assets/img/french-cities.jpg"
+favicon_ico: "/assets/img/favicon-french-cities.ico"
+color_scheme: dark
+
+
 sass:
   sourcemap: never
