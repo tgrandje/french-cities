@@ -147,7 +147,8 @@ missing = find_city(
 )
 print(missing["newCodeInsee"])
 print(
-    "Nous avons normalement bien récupéré le code INSEE de "
-    "Saint-Etienne-au-Mont : "
-    "https://www.insee.fr/fr/statistiques/2011101?geo=COM-62746"
+    "L'exécution de Nominatim ne conduit pas systématiquement au même résultat"
+    ", ce qui n'est pas totalement absurde, le hameau manquant étant à cheval "
+    "sur plusieurs communes. Les résultats fournis sont normalement tous "
+    "pertinents."
 )

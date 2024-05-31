@@ -6,7 +6,7 @@ handle: /project_cities_to_year
 nav_order: 6
 
 ---
-### Projection de codes communes dans un millésime donné
+# Projection de codes communes dans un millésime donné
 
 `french-cities` peut tenter de "projeter" un dataframe dans un millésime donné,
 la date initiale demeurant inconnue (voire inexistante, les cas de fichiers
@@ -29,12 +29,34 @@ impacter les communes restaurées) ;
 l'API de projection de l'INSEE sera mobilisée de manière ciblée).
 
 Cet algorithme va également :
-* convertir les codes des éventuels arrondissements municipaux en celui de leur
-commune de rattachement;
-* convertir les codes des communes associées et déléguées en celui de leur 
-commune de rattachement.
+* convertir les codes des éventuels arrondissements municipaux en celui de 
+leurs communes de rattachement;
+* convertir les codes des communes associées et déléguées en celui de leurs 
+communes de rattachement.
 
+### Docstring de la fonction `set_vintage`
 ```
+set_vintage(df: pandas.core.frame.DataFrame, year: int, field: str) -> pandas.core.frame.DataFrame
+    Project (approximatively) the cities codes of a dataframe into a desired
+    vintage.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing city codes
+    year : int
+        Year to project the dataframe's city codes into
+    field : str
+        Field (column) of dataframe containing the city code
+    
+    Returns
+    -------
+    pd.DataFrame
+        Projected DataFrame
+```
+
+### Exemple d'utilisation basique
+```python
 from french_cities import set_vintage
 import pandas as pd
 
@@ -55,6 +77,3 @@ df = set_vintage(df, 2023, field="A")
 print(df)
 ```
 
-Pour une documentation complète sur la fonction `set_vintage`, merci 
-d'utiliser la commande suivante :
-`help(set_vintage)`.

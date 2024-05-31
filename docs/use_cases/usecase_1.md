@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Retrouver des codes communes à partir de libellés, codes postaux, etc.
+title: Combler des données communales manquantes
 language: fr
 handle: /use_cases_1
 parent: Cas d'usages
@@ -9,7 +9,7 @@ nav_order: 1
 ---
 
 # Cas d'usage
-## Retrouver des codes communes à partir de libellés, codes postaux, adresses et coordonnées géographiques
+## Combler des données communales manquantes à partir de libellés, codes postaux, adresses et coordonnées géographiques
 
 Téléchargement du notebook [ici](./usecase_1.py)
 
@@ -29,7 +29,7 @@ Pour en savoir plus sur les installations classées, vous pouvez consulter
 
 ### Constitution du jeu de données
 
-```
+```python
 import pandas as pd
 from requests_cache import CachedSession
 from tqdm import tqdm
@@ -69,7 +69,7 @@ data = pd.DataFrame(data)
 
 ### Analyse du jeu de données obtenu
 
-```
+```python
 print(data.shape)
 print(data.head())
 
@@ -93,7 +93,7 @@ sont disponibles et exploitables pour retrouver les communes manquantes :
 
 ### Complétion des données avec french-cities
 
-```
+```python
 from french_cities import find_city
 
 # =============================================================================
@@ -159,7 +159,7 @@ résultat de Saint-Etienne-au-Mont être retenu...
 Si cette fois, on décide d'utiliser l'API Nominatim en dernier recours, le code
 devient :
 
-```
+```python
 # On isole la(es) ligne(s) manquante(s)
 missing = data[data.codeInsee.isnull()]
 
@@ -190,7 +190,8 @@ missing = find_city(
 print(missing["newCodeInsee"])
 ```
 
-Nous avons normalement bien récupéré le code INSEE de 
-[Saint-Etienne-au-Mont](https://www.insee.fr/fr/statistiques/2011101?geo=COM-62746) .
+L'exécution de Nominatim ne conduit pas systématiquement au même résultat, ce
+qui n'est pas totalement absurde, le hameau manquant étant à cheval sur
+plusieurs communes. Les résultats fournis sont normalement tous pertinents.
 
 
