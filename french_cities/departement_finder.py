@@ -8,6 +8,7 @@ from requests_cache import CachedSession
 from requests import Session
 from datetime import timedelta
 import logging
+import numpy as np
 import time
 from tqdm import tqdm
 from pebble import ThreadPool
@@ -155,11 +156,13 @@ def _process_departements_from_postal(
             for f in ["libelle", "nom_com"]:
                 results_cedex[f] = (
                     results_cedex[f]
+                    .fillna("")
                     .str.upper()
                     .apply(unidecode)
                     .str.split(r"\W+")
                     .str.join(" ")
                     .str.strip(" ")
+                    .replace("", np.nan)
                 )
             results_cedex["libelle"] = results_cedex["libelle"].str.replace(
                 r" CEDEX", ""
@@ -202,7 +205,7 @@ def _process_departements_from_postal(
             source=source,
             alias="dep",
             session=session,
-        )[alias]
+        )["dep"]
 
     logger.info("résultat obtenu")
 
