@@ -43,6 +43,7 @@ pytest = "^7.4.0"
 licensecheck = "^2024.2"
 pyqt5-qt5 = "5.15.2"
 pyqtwebengine-qt5 = "5.15.2"
+lxml = "^5.2.2"
 
 [build-system]
 requires = ["poetry-core"]
