@@ -1,18 +1,45 @@
 # -*- coding: utf-8 -*-
 """
 Cas d'usage #2 : après récupération d'un jeu de données quelconque (ici les
-l'annuaire des débits de tabac en France métropolitaine),
-retrouver les codes communes des établissements connaissant les libellés
+marchés publics conclus recensés sur la plateforme des achats de l’Etat)
+retrouver les codes communes des attributaires connaissant les libellés
 communaux et les codes postaux
 """
 
 import io
+import numpy as np
 import os
 import pandas as pd
 from requests_cache import CachedSession
-import zipfile
 
-from french_cities import find_departements, find_city
+from french_cities import find_city
+
+# =============================================================================
+# Récupération des marchés publics conclus
+# =============================================================================
+url = (
+    "https://static.data.gouv.fr/"
+    "resources/"
+    "marches-publics-conclus-recenses-sur-la-plateforme-des-achats-de-letat/"
+    "20160701-120733/Export_ETALAB_2015_complete.xlsx"
+)
+s = CachedSession()
+r = s.get(url)
+obj = io.BytesIO(r.content)
+obj.seek(0)
+df = pd.read_excel(obj)
+for c in df.columns:
+    try:
+        df[c] = df[c].str.replace("^ *$", "", regex=True).replace("", None)
+    except AttributeError:
+        pass
+df = df.dropna(how="all", axis=1)
+
+# Retraitement des codes postaux manifestement erronés
+ix = df[
+    ~df["Code Postal Attributaire"].fillna("").str.fullmatch("[0-9]{5}")
+].index
+df.loc[ix, "Code Postal Attributaire"] = np.nan
 
 # =============================================================================
 # Configuration de l'API INSEE
@@ -21,34 +48,21 @@ os.environ["insee_key"] = "********************"
 os.environ["insee_secret"] = "********************"
 
 # =============================================================================
-# Récupération du jeu de données 2022
+# Reconnaissance des codes communes avec french-cities
 # =============================================================================
-url = "https://www.douane.gouv.fr/sites/default/files/openData/files/annuaire-des-debits-de-tabac-2018.zip"
-s = CachedSession()
-r = s.get(url)
-with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-    content = z.read("annuaire-des-debits-de-tabac-2018.csv")
-    df = pd.read_csv(
-        io.BytesIO(content), dtype=str, sep=";", encoding="cp1252"
-    )
 
-
-# %%
-df = find_departements(
-    df, source="CODE POSTAL", alias="DEP", type_code="postcode", session=s
-)
-# %%
 df = find_city(
     df,
+    year="last",
     x=False,
     y=False,
-    dep="DEP",
-    city="COMMUNE",
-    address="ADRESSE",
-    postcode="CODE POSTAL",
-    field_output="insee_com",
-    session=s,
+    epsg=False,
+    city="Ville",
+    dep=False,
+    address=False,
+    postcode="Code Postal Attributaire",
     use_nominatim_backend=True,
+    field_output="codeInsee",
 )
 
-df.insee_com.value_counts()
+print(df.codeInsee.isnull().value_counts())

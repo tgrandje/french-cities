@@ -191,7 +191,7 @@ def find_city(
                 r" \(.*\)$", "", regex=True
             )  # Neuville-Housset (La) -> Neuville-Housset
             .str.upper()
-            .apply(unidecode)  # A voir si on conserve
+            .apply(unidecode)
             .str.split(r"\W+")
             .str.join(" ")
             .str.replace(r"(^|\s)(ST)\s", " SAINT ", regex=True)
@@ -236,7 +236,9 @@ def find_city(
 
     # Add dep recognition if not already there, just to check the result's
     # coherence (and NOT to compute city recognition using it!)
+    drop_dep = False
     if not dep:
+        drop_dep = True
         dep = "dep"
     try:
         if dep not in components_kept:
@@ -418,6 +420,9 @@ def find_city(
 
     df = df.drop("city_cleaned", axis=1)
     df = df.rename({"best": field_output}, axis=1)
+
+    if drop_dep:
+        df = df.drop(dep, axis=1)
 
     df = df.set_index("index")
     return df
@@ -811,7 +816,13 @@ def _query_BAN_individual_geocoder(
                 "limit": 1,
             },
         ).json()
-        features = r["features"]
+        try:
+            features = r["features"]
+        except KeyError:
+            logger.error(f"query was q={x}")
+            logger.error(r)
+            raise
+
         query = r["query"]
         for dict_ in features:
             dict_["properties"].update({"full": query})
@@ -823,7 +834,7 @@ def _query_BAN_individual_geocoder(
     #     np.array(addresses.full.apply(get).tolist()).flatten()
     #     )
 
-    args = addresses.full.tolist()
+    args = addresses.full.str.replace("\W", "", regex=True).tolist()
     results = []
     with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
         with ThreadPool(threads) as pool:
