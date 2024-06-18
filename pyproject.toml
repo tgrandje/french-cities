@@ -44,6 +44,9 @@ licensecheck = "^2024.2"
 pyqt5-qt5 = "5.15.2"
 pyqtwebengine-qt5 = "5.15.2"
 lxml = "^5.2.2"
+openpyxl = "^3.1.4"
+spyder-notebook = "^0.5.1"
+matplotlib = "^3.9.0"
 
 [build-system]
 requires = ["poetry-core"]
