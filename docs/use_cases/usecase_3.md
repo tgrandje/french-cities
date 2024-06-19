@@ -11,7 +11,7 @@ nav_order: 3
 # Cas d'usage
 ## Retrouver des codes communes à partir de libellés communaux et départementaux
 
-Téléchargement du notebook [ici](./usecase_3.py)
+Accéder <a href="./../usecase_3_notebook.html" target="_blank">au notebook ici</a>.
 
 Dans cet exemple, il s'agit de retrouver les communes ciblées par un arrêté
 de reconnaissance de l'état de
