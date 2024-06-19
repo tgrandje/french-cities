@@ -11,7 +11,7 @@ nav_order: 1
 # Cas d'usage
 ## Combler des données communales manquantes à partir de libellés, codes postaux, adresses et coordonnées géographiques
 
-Téléchargement du notebook [ici](./usecase_1.py)
+Accéder <a href="./../usecase_1_notebook.html" target="_blank">au notebook ici</a>.
 
 Dans cet exemple, il s'agit de compléter les données communales d'un jeu plutôt
 bien renseigné, mais incomplet. On s'intéresse à l'exemple des données
@@ -106,7 +106,7 @@ os.environ["insee_secret"] = "********************"
 # Utilisation de french-cities pour trouver les codes communes manquants
 # =============================================================================
 
-missing = data[data.codeInsee.isnull()]
+missing = data[data.codeInsee.isnull()].copy()
 
 # Au besoin, vérifier que le système de projection des coordonnées est en
 # EPSG 2154
@@ -114,15 +114,17 @@ missing = data[data.codeInsee.isnull()]
 
 # Concaténer les champs adresses :
 cols = [f"adresse{x}" for x in range(1, 4)]
-missing["adresse"] = (
+cols = [f"adresse{x}" for x in range(1, 4)]
+addresses = (
     missing[cols[0]]
     .str.cat(missing[cols[1:]], sep=" ", na_rep="")
     .str.replace(" +", " ", regex=True)
     .str.strip(" ")
 )
+missing["adresse"] = addresses
 
 # Recherche des communes manquantes à l'aide de french-cities
-missing = find_city(
+filled = find_city(
     missing,
     year="last",
     x="coordonneeXAIOT",
@@ -135,8 +137,8 @@ missing = find_city(
     field_output="newCodeInsee",
 )
 
-# Réinjection les codes manquants dans le dataframe comple
-data = data.join(missing[["newCodeInsee"]])
+# Réinjection les codes manquants dans le dataframe complet
+data = data.join(filled[["newCodeInsee"]])
 data["codeInsee"] = data["codeInsee"].combine_first(data["newCodeInsee"])
 data = data.drop("newCodeInsee", axis=1)
 
@@ -154,23 +156,24 @@ A date du 30/05/2024, une seule commune n'a pas été trouvée.
 Effectivement, dans ce cas de figure, le lieu-dit (PONT DE BRIQUES) et la 
 commune (SAINT ETIENNE AU MONT) ont été inversés : ceci explique que le score 
 de la base adresse nationale n'ait pas été jugé suffisamment bon pour que le 
-résultat de Saint-Etienne-au-Mont être retenu...
+résultat de Saint-Etienne-au-Mont puisse être retenu...
 
 Si cette fois, on décide d'utiliser l'API Nominatim en dernier recours, le code
 devient :
 
 ```python
 # On isole la(es) ligne(s) manquante(s)
-missing = data[data.codeInsee.isnull()]
+missing = data[data.codeInsee.isnull()].copy()
 
 # On concatène de nouveau les champs adresses :
 cols = [f"adresse{x}" for x in range(1, 4)]
-missing["adresse"] = (
+addresses = (
     missing[cols[0]]
     .str.cat(missing[cols[1:]], sep=" ", na_rep="")
     .str.replace(" +", " ", regex=True)
     .str.strip(" ")
 )
+missing.loc[:, "adresse"] = addresses
 
 # Et on spécifie l'usage de Nominatim
 missing = find_city(
@@ -190,8 +193,10 @@ missing = find_city(
 print(missing["newCodeInsee"])
 ```
 
-L'exécution de Nominatim ne conduit pas systématiquement au même résultat, ce
-qui n'est pas totalement absurde, le hameau manquant étant à cheval sur
-plusieurs communes. Les résultats fournis sont normalement tous pertinents.
+L'exécution de Nominatim ne conduit pas systématiquement au même résultat
+(et même parfois ne produit pas de résultat). 
+Cela n'est pas totalement absurde, le hameau manquant étant à cheval sur
+plusieurs communes. Les résultats fournis restent généralement pertinents.
+
 
 
