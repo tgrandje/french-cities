@@ -1,6 +1,13 @@
 # french-cities
 Toolbox on french cities: set vintage, find departments, find cities...
 
+# Documentation
+
+A full documentation with usecases is available at [https://tgrandje.github.io/french-cities/](https://tgrandje.github.io/french-cities/).
+Obviously, it is only available in french as yet.
+Any help is welcome to build a multi-lingual documentation website.
+
+Until then, a basic english documentation will stay available in the present README. 
 
 # Installation
 
@@ -8,7 +15,6 @@ Toolbox on french cities: set vintage, find departments, find cities...
 
 Note that the "full" installation will also install geopy, which might use
 Nominatim API for city recognition as a last resort.
-
 
 # Configuration
 
@@ -237,13 +243,17 @@ For a complete documentation on `set_vintage`, please type
 * [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/)
 
 ## Support
+
 In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
+
+## Contribution
+Any help is welcome.
 
 ## Author
 Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Durable et Évaluation Environnementale, pôle Promotion de la Connaissance).
 
 ## Licence
-Licence Ouverte version 2.0 [etalab-2.0](https://www.etalab.gouv.fr/wp-content/uploads/2017/04/ETALAB-Licence-Ouverte-v2.0.pdf)
+GPL-3.0-or-later
 
 ## Project Status
-Test phase.
+In production.
