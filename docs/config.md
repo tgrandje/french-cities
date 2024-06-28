@@ -27,7 +27,7 @@ A noter que la configuration des proxy par variable d'environnement sera
 fonctionnelle pour à la fois pynsee et geopy.
 
 ## Gestion des sessions web
-`pynsee` et `geopy` utilisent leur propres gestionnaires de session web.
+`pynsee` et `geopy` utilisent leurs propres gestionnaires de session web.
 
 Ainsi, les objets `Session` passés en argument à french-cities ne seront
 **PAS** partagés avec `pynsee` ou `geopy`.

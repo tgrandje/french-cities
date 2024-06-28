@@ -3,7 +3,7 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>french-cities | cas d'usage n°3</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>french-cities | cas d'usage n°4</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7510,39 +7510,51 @@ a.anchor-link {
 <!-- End of mermaid configuration --></head>
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <main>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=356f1d43-ae62-49b9-9336-df01ea7eb370">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=36e3dfd8-2c43-4ace-a2df-18f126d1534f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Cas-d'usage-n%C2%B03">Cas d'usage n°3<a class="anchor-link" href="#Cas-d'usage-n%C2%B03">¶</a></h1>
+<h1 id="Cas-d'usage-n%C2%B04">Cas d'usage n°4<a class="anchor-link" href="#Cas-d'usage-n%C2%B04">¶</a></h1>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d04be24f-2ebf-4952-830a-f32d771f7a26">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=30620606-cdd0-4834-9ca3-d7bbd06e729d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Après récupération d'un arrêté "catastrophes naturelles", retrouver des codes communes à partir de libellés communaux et départementaux</p>
+<h2 id="Mill%C3%A9simer-un-jeu-de-donn%C3%A9es">Millésimer un jeu de données<a class="anchor-link" href="#Mill%C3%A9simer-un-jeu-de-donn%C3%A9es">¶</a></h2>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f2df726d-0f79-4494-8f1c-3a4aa9e50ea1">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=533be89f-6f9b-462d-88bf-891f035cc8cc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Import-des-modules">Import des modules<a class="anchor-link" href="#Import-des-modules">¶</a></h2>
+<p>Dans cet exemple, nous allons nous intéresser aux
+<a href="https://data.ademe.fr/datasets/srd-ademe">sites pollués gérés par l'ADEME</a>.</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=928a44f5-8f95-40f3-94b3-ca35097e8966">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=66f06f64-266d-401f-a831-aae0f43e16d2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Constituer-le-jeu-de-donn%C3%A9es">Constituer le jeu de données<a class="anchor-link" href="#Constituer-le-jeu-de-donn%C3%A9es">¶</a></h3>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5cb43522-dac5-4de6-98b0-cac5218d882e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7550,28 +7562,345 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">requests_cache</span> <span class="kn">import</span> <span class="n">CachedSession</span>
 
-<span class="kn">from</span> <span class="nn">french_cities</span> <span class="kn">import</span> <span class="n">find_departements_from_names</span><span class="p">,</span> <span class="n">find_city</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">CachedSession</span><span class="p">()</span>
+
+<span class="n">url</span> <span class="o">=</span> <span class="s2">"https://data.ademe.fr/data-fair/api/v1/datasets/srd-ademe/lines?size=10000&amp;page=1&amp;format=csv"</span>
+
+<span class="n">r</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">content</span><span class="p">),</span> <span class="n">sep</span><span class="o">=</span><span class="s2">","</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+<span class="n">df</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=afd4f065-d37a-4134-b33e-65c346cf1a2b">
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[1]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+<thead>
+<tr style="text-align: right;">
+<th></th>
+<th>Nom_site</th>
+<th>Typologie_intervention_ADEME</th>
+<th>Commune</th>
+<th>Code_INSEE</th>
+<th>Activites_historiques_site</th>
+<th>Description_activites</th>
+<th>Surface_site_m2</th>
+<th>Superficie_bati_m2</th>
+<th>Arrete_Prefectoral_Travaux_Office</th>
+<th>Numeros_parcelles_cadastrales</th>
+<th>Resume_intervention_ADEME</th>
+<th>Liens_vers_BASOL_BASIAS</th>
+<th>Usage_actuel_site</th>
+<th>Region</th>
+<th>Departement</th>
+<th>CoordXLambert2Etendue</th>
+<th>CoordYLambert2Etendue</th>
+<th>Etat_operation</th>
+<th>fiches_export</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<th>0</th>
+<td>ARDENITY</td>
+<td>Gestion et élimination de déchets</td>
+<td>Givet</td>
+<td>8190</td>
+<td>Matériaux isolants (Fabrication, Production)</td>
+<td>A parti des années 1980, le site a accueilli d...</td>
+<td>19700</td>
+<td>7000</td>
+<td>La mission de l'ADEME était encadrée par arrêt...</td>
+<td>000AY34 - 000AY37 - 000AY57 - 000AY64 000AY67 ...</td>
+<td>En 2006, ARDENITY exploite le site concentrant...</td>
+<td>http//basol.developpement-durable.gouv.fr/fich...</td>
+<td>Friche</td>
+<td>Grand-Est</td>
+<td>8</td>
+<td>777397.3</td>
+<td>2574527.8</td>
+<td>Terminée</td>
+<td>ARDENITY_08190_10112020.pdf</td>
+</tr>
+<tr>
+<th>1</th>
+<td>ATELIERS DE BADAN</td>
+<td>Gestion et élimination de déchets, Investigati...</td>
+<td>Grigny</td>
+<td>69096</td>
+<td>Ateliers mécaniques</td>
+<td>En 1984, la société des ATELIERS DE BADAN s'es...</td>
+<td>550000</td>
+<td>12000</td>
+<td>NaN</td>
+<td>69096000AS102</td>
+<td>NaN</td>
+<td>NaN</td>
+<td>non renseigné</td>
+<td>Auvergne-Rhone-Alpes</td>
+<td>69</td>
+<td>791155.3</td>
+<td>2069936.3</td>
+<td>Terminée</td>
+<td>ATELIERS DE BADAN_69096_14042020.pdf</td>
+</tr>
+<tr>
+<th>2</th>
+<td>ATLAS INNOVATION</td>
+<td>Gestion et élimination de déchets, Investigati...</td>
+<td>Issé</td>
+<td>44075</td>
+<td>Plastique (Fabrication, Production, Transforma...</td>
+<td>De 1958 à  2003 la société Atlas Plastique exe...</td>
+<td>71000</td>
+<td>32000</td>
+<td>La mission de l'ADEME était encadrée par 2 arr...</td>
+<td>000AC162 - 000AC163 - 000AC164 - 000AC210 - 00...</td>
+<td>Diverses sociétés ont mené une activité d'endu...</td>
+<td>https//basol.developpement-durable.gouv.fr/fic...</td>
+<td>non renseigné</td>
+<td>Pays-de-la-Loire</td>
+<td>44</td>
+<td>315310.9</td>
+<td>2298072.7</td>
+<td>Terminée</td>
+<td>ATLAS_INNOVATIONS_44075_08102020.pdf</td>
+</tr>
+<tr>
+<th>3</th>
+<td>AUREATEX</td>
+<td>Gestion et élimination de déchets</td>
+<td>Saulce-sur-rhone</td>
+<td>8402</td>
+<td>Textile, Teinturerie (production, préparation)</td>
+<td>La SAS AUREATEX exerà§ait une activité de la p...</td>
+<td>28100</td>
+<td>13500</td>
+<td>NaN</td>
+<td>08402000AB233</td>
+<td>NaN</td>
+<td>NaN</td>
+<td>non renseigné</td>
+<td>Auvergne-Rhone-Alpes</td>
+<td>26</td>
+<td>795167.9</td>
+<td>1970313.9</td>
+<td>Terminée</td>
+<td>AUREATEX_26337_21042020.pdf</td>
+</tr>
+<tr>
+<th>4</th>
+<td>BAUDOU</td>
+<td>Gestion et élimination de déchets, Investigati...</td>
+<td>Les églisottes-et-Chalaures</td>
+<td>33154</td>
+<td>Plastique (Fabrication, Production, Transforma...</td>
+<td>Ancien site industriel de fabrication de chaus...</td>
+<td>45200</td>
+<td>8000</td>
+<td>La mission de l'ADEME était encadrée par arrêt...</td>
+<td>000AB109 - 000AB389 - 000AB390 - 000AB391 - 00...</td>
+<td>Ancien site industriel de fabrication de chaus...</td>
+<td>NaN</td>
+<td>non renseigné</td>
+<td>Nouvelle-Aquitaine</td>
+<td>33</td>
+<td>413060.6</td>
+<td>2014069.8</td>
+<td>Terminée</td>
+<td>BAUDOU_33154_06102020.pdf</td>
+</tr>
+<tr>
+<th>...</th>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<th>414</th>
+<td>WIPELEC</td>
+<td>Investigations environnementales, Travaux, Dép...</td>
+<td>Romainville</td>
+<td>93063</td>
+<td>Traitement de surface, Revêtements, Applicatio...</td>
+<td>Une activité de traitement de surface a été ex...</td>
+<td>3500</td>
+<td>1150</td>
+<td>La mission de l'ADEME était encadrée par arrêt...</td>
+<td>000AM181 à  183 000AM185 - 000AM224 - 000AM225...</td>
+<td>Une activité de traitement de surface a été ex...</td>
+<td>NaN</td>
+<td>Non renseigné</td>
+<td>Ile-de-France</td>
+<td>93</td>
+<td>607798.1</td>
+<td>2430480.9</td>
+<td>En cours</td>
+<td>NaN</td>
+</tr>
+<tr>
+<th>415</th>
+<td>WONDER (Collège Ariane et habitation en proxim...</td>
+<td>Travaux, Dépollution et Maîtrise des transfert...</td>
+<td>Vernon</td>
+<td>27681</td>
+<td>Fabrication de piles</td>
+<td>Collège construit sur l'emprise d'anciens terr...</td>
+<td>non renseigné</td>
+<td>non renseigné</td>
+<td>La mission de l'ADEME est encadrée par arrêté ...</td>
+<td>NaN</td>
+<td>College construit sur l'emprise d'anciens terr...</td>
+<td>NaN</td>
+<td>non renseigné</td>
+<td>Normandie</td>
+<td>27</td>
+<td>536807.61</td>
+<td>2455540.21</td>
+<td>En cours</td>
+<td>NaN</td>
+</tr>
+<tr>
+<th>416</th>
+<td>YERAMEX</td>
+<td>Gestion et élimination de déchets, Investigati...</td>
+<td>Le Saulcy</td>
+<td>88444</td>
+<td>Plastique (Fabrication, Production, Transforma...</td>
+<td>L'usine YERAMEX permettait la fabrication de t...</td>
+<td>24400</td>
+<td>6000</td>
+<td>La mission de l'ADEME était encadrée par arrêt...</td>
+<td>000A2283 à  0002294 - 000A679 - 000A899 - 000A904</td>
+<td>L'usine YERAMEX permettait la fabrication de t...</td>
+<td>NaN</td>
+<td>Non renseigné</td>
+<td>Grand-Est</td>
+<td>88</td>
+<td>949347.5</td>
+<td>2390410.7</td>
+<td>En cours</td>
+<td>NaN</td>
+</tr>
+<tr>
+<th>417</th>
+<td>ZAC DES AIGUILLES</td>
+<td>Investigations environnementales</td>
+<td>Gignac-le-Nerthe</td>
+<td>13043</td>
+<td>Dépôt (déchets divers)</td>
+<td>Début 2019, dans le cadre de l'élaboration des...</td>
+<td>9150</td>
+<td>non renseigné</td>
+<td>La mission de l'ADEME est encadrée par arrêté ...</td>
+<td>NaN</td>
+<td>Début 2019, dans le cadre de l'élaboration des...</td>
+<td>NaN</td>
+<td>Non renseigné</td>
+<td>PACA</td>
+<td>13</td>
+<td>832563.94</td>
+<td>1823882.76</td>
+<td>En cours</td>
+<td>NaN</td>
+</tr>
+<tr>
+<th>418</th>
+<td>ZIMAVAL TECHNOLOGIES</td>
+<td>Travaux, Dépollution et Maîtrise des transferts</td>
+<td>Falaise</td>
+<td>14258</td>
+<td>Regroupement, Tri, Transit, Recyclage (déchets...</td>
+<td>La société ZIMAVAL avait mis en oeuvre et expl...</td>
+<td>10110</td>
+<td>2200</td>
+<td>La mission de l'ADEME était encadrée par arrêt...</td>
+<td>000ZH36</td>
+<td>La société ZIMAVAL avait mis en oeuvre et expl...</td>
+<td>NaN</td>
+<td>Activités tertiaires (recyclage des déchets)</td>
+<td>Normandie</td>
+<td>14</td>
+<td>415354</td>
+<td>2435233.5</td>
+<td>Terminée</td>
+<td>NaN</td>
+</tr>
+</tbody>
+</table>
+<p>419 rows × 19 columns</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e5aea659-55b7-419c-aa90-cffd7ba49594">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="R%C3%A9cup%C3%A9ration-de-l'arr%C3%AAt%C3%A9-%22CATNAT%22-et-chargement-de-l'annexe-1">Récupération de l'arrêté "CATNAT" et chargement de l'annexe 1<a class="anchor-link" href="#R%C3%A9cup%C3%A9ration-de-l'arr%C3%AAt%C3%A9-%22CATNAT%22-et-chargement-de-l'annexe-1">¶</a></h2>
+<h3 id="Corriger-le-jeu-de-donn%C3%A9es">Corriger le jeu de données<a class="anchor-link" href="#Corriger-le-jeu-de-donn%C3%A9es">¶</a></h3>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=426506f8-bf02-4861-962c-acd6bbd78092">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7ca75b1b-88f9-4641-89ee-e322792215b4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Certains codes INSEE ont été mal formatés dans le fichier source :
+malgré la précaution de spécifier un type "str", il manque des 0 en tête de
+code commune pour les neuf premiers départements français.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=4df5eed7-03c3-4acc-a98e-42ce05deddc3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7579,16 +7908,8 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">url</span> <span class="o">=</span> <span class="s2">"https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000048393151"</span>
-<span class="n">s</span> <span class="o">=</span> <span class="n">CachedSession</span><span class="p">()</span>
-<span class="n">FIREFOX</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s2">"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) "</span>
-    <span class="s2">"Gecko/20100101 Firefox/126.0"</span>
-<span class="p">)</span>
-<span class="n">s</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">"User-Agent"</span><span class="p">:</span> <span class="n">FIREFOX</span><span class="p">})</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf8"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">df</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">ix</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">Code_INSEE</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span> <span class="o">==</span> <span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+<span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span> <span class="s2">"Code_INSEE"</span><span class="p">]</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -7619,146 +7940,106 @@ a.anchor-link {
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>Département</th>
-<th>Commune</th>
-<th>Phénomène naturel</th>
-<th>Date de début de la période de reconnaissance</th>
-<th>Date de fin de la période de reconnaissance</th>
-<th>Nombre de reconnaissances au cours des 5 dernières années hors PPRN (article 3 de l'arrêté)</th>
-<th>Motivations de la décision</th>
+<th>Code_INSEE</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <th>0</th>
-<td>Nord</td>
-<td>Arnèke</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-</tr>
-<tr>
-<th>1</th>
-<td>Nord</td>
-<td>Bavinchove</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-</tr>
-<tr>
-<th>2</th>
-<td>Nord</td>
-<td>Boeschepe</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<td>8190</td>
 </tr>
 <tr>
 <th>3</th>
-<td>Nord</td>
-<td>Bourbourg</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<td>8402</td>
 </tr>
 <tr>
-<th>4</th>
-<td>Nord</td>
-<td>Esquelbecq</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<th>11</th>
+<td>2173</td>
 </tr>
 <tr>
-<th>...</th>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
+<th>23</th>
+<td>3185</td>
+</tr>
+<tr>
+<th>27</th>
+<td>9157</td>
+</tr>
+<tr>
+<th>35</th>
+<td>7013</td>
+</tr>
+<tr>
+<th>55</th>
+<td>3229</td>
+</tr>
+<tr>
+<th>90</th>
+<td>3315</td>
+</tr>
+<tr>
+<th>104</th>
+<td>1053</td>
+</tr>
+<tr>
+<th>133</th>
+<td>6054</td>
+</tr>
+<tr>
+<th>156</th>
+<td>2064</td>
+</tr>
+<tr>
+<th>196</th>
+<td>8363</td>
 </tr>
 <tr>
 <th>200</th>
-<td>Pas-de-Calais</td>
-<td>Wizernes</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<td>2289</td>
 </tr>
 <tr>
-<th>201</th>
-<td>Pas-de-Calais</td>
-<td>Zoteux</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<th>220</th>
+<td>6048</td>
 </tr>
 <tr>
-<th>202</th>
-<td>Pas-de-Calais</td>
-<td>Zouafques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<th>223</th>
+<td>1320</td>
 </tr>
 <tr>
-<th>203</th>
-<td>Pas-de-Calais</td>
-<td>Zudausques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<th>245</th>
+<td>5122</td>
 </tr>
 <tr>
-<th>204</th>
-<td>Pas-de-Calais</td>
-<td>Zutkerque</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
+<th>275</th>
+<td>2243</td>
+</tr>
+<tr>
+<th>293</th>
+<td>2195</td>
+</tr>
+<tr>
+<th>358</th>
+<td>6088</td>
+</tr>
+<tr>
+<th>389</th>
+<td>1427</td>
+</tr>
+<tr>
+<th>390</th>
+<td>2596</td>
+</tr>
+<tr>
+<th>412</th>
+<td>8343</td>
 </tr>
 </tbody>
 </table>
-<p>205 rows × 7 columns</p>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4a3b582e-7906-48cd-9607-88b0b8d04c85">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Configuration-de-l'API-INSEE">Configuration de l'API INSEE<a class="anchor-link" href="#Configuration-de-l'API-INSEE">¶</a></h2>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=39dd87a8-09ba-4ca0-8816-baf56e8e76c2">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=435d9d1f-d9b6-4ebb-aef1-a9a0ac607dc5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7766,34 +8047,8 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"insee_key"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"********************"</span>
-<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"insee_secret"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"********************"</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=14a2e04c-817b-416a-a7b9-2fae922cbb67">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Reconnaissance-des-d%C3%A9partements,-puis-des-communes">Reconnaissance des départements, puis des communes<a class="anchor-link" href="#Reconnaissance-des-d%C3%A9partements,-puis-des-communes">¶</a></h2>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=350d4194-7d73-4668-a1bf-0958333c7899">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">find_departements_from_names</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"Département"</span><span class="p">,</span> <span class="n">alias</span><span class="o">=</span><span class="s2">"DEP_CODE"</span><span class="p">)</span>
-<span class="n">df</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">"Code_INSEE"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">"Code_INSEE"</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span> <span class="s2">"Code_INSEE"</span><span class="p">]</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -7804,7 +8059,7 @@ a.anchor-link {
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[4]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -7824,147 +8079,155 @@ a.anchor-link {
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>Département</th>
-<th>Commune</th>
-<th>Phénomène naturel</th>
-<th>Date de début de la période de reconnaissance</th>
-<th>Date de fin de la période de reconnaissance</th>
-<th>Nombre de reconnaissances au cours des 5 dernières années hors PPRN (article 3 de l'arrêté)</th>
-<th>Motivations de la décision</th>
-<th>DEP_CODE</th>
+<th>Code_INSEE</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <th>0</th>
-<td>Nord</td>
-<td>Arnèke</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-</tr>
-<tr>
-<th>1</th>
-<td>Nord</td>
-<td>Bavinchove</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-</tr>
-<tr>
-<th>2</th>
-<td>Nord</td>
-<td>Boeschepe</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
+<td>08190</td>
 </tr>
 <tr>
 <th>3</th>
-<td>Nord</td>
-<td>Bourbourg</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
+<td>08402</td>
 </tr>
 <tr>
-<th>4</th>
-<td>Nord</td>
-<td>Esquelbecq</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
+<th>11</th>
+<td>02173</td>
 </tr>
 <tr>
-<th>...</th>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
+<th>23</th>
+<td>03185</td>
+</tr>
+<tr>
+<th>27</th>
+<td>09157</td>
+</tr>
+<tr>
+<th>35</th>
+<td>07013</td>
+</tr>
+<tr>
+<th>55</th>
+<td>03229</td>
+</tr>
+<tr>
+<th>90</th>
+<td>03315</td>
+</tr>
+<tr>
+<th>104</th>
+<td>01053</td>
+</tr>
+<tr>
+<th>133</th>
+<td>06054</td>
+</tr>
+<tr>
+<th>156</th>
+<td>02064</td>
+</tr>
+<tr>
+<th>196</th>
+<td>08363</td>
 </tr>
 <tr>
 <th>200</th>
-<td>Pas-de-Calais</td>
-<td>Wizernes</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
+<td>02289</td>
 </tr>
 <tr>
-<th>201</th>
-<td>Pas-de-Calais</td>
-<td>Zoteux</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
+<th>220</th>
+<td>06048</td>
 </tr>
 <tr>
-<th>202</th>
-<td>Pas-de-Calais</td>
-<td>Zouafques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
+<th>223</th>
+<td>01320</td>
 </tr>
 <tr>
-<th>203</th>
-<td>Pas-de-Calais</td>
-<td>Zudausques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
+<th>245</th>
+<td>05122</td>
 </tr>
 <tr>
-<th>204</th>
-<td>Pas-de-Calais</td>
-<td>Zutkerque</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
+<th>275</th>
+<td>02243</td>
+</tr>
+<tr>
+<th>293</th>
+<td>02195</td>
+</tr>
+<tr>
+<th>358</th>
+<td>06088</td>
+</tr>
+<tr>
+<th>389</th>
+<td>01427</td>
+</tr>
+<tr>
+<th>390</th>
+<td>02596</td>
+</tr>
+<tr>
+<th>412</th>
+<td>08343</td>
 </tr>
 </tbody>
 </table>
-<p>205 rows × 8 columns</p>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=13134b6b-f728-41c4-b0e8-a066c88b63d8">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f7072407-e61e-433d-83c6-a66625b22cd9">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Mill%C3%A9simer-le-jeu-de-donn%C3%A9es">Millésimer le jeu de données<a class="anchor-link" href="#Mill%C3%A9simer-le-jeu-de-donn%C3%A9es">¶</a></h3>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=434ca945-1792-4fcc-a23c-675fed4c837a">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Configuration de l'API INSEE</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=dd7d17f6-3fef-480c-b2f2-c84ef03f3186">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">french_cities</span> <span class="kn">import</span> <span class="n">set_vintage</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"insee_key"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"********************"</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"insee_secret"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"********************"</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9a47be0a-a183-4d1a-b770-4051d1b99750">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Stocker les codes initiaux pour effectuer une comparaison ultérieure</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=25122209-fbc8-4da5-b072-ef5a4a128d0a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7972,17 +8235,33 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">find_city</span><span class="p">(</span>
-    <span class="n">df</span><span class="p">,</span>
-    <span class="n">x</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">y</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">dep</span><span class="o">=</span><span class="s2">"DEP_CODE"</span><span class="p">,</span>
-    <span class="n">city</span><span class="o">=</span><span class="s2">"Commune"</span><span class="p">,</span>
-    <span class="n">address</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">postcode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-    <span class="n">session</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">df</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">init</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">"Code_INSEE"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">init</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">"initial"</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a6feb311-c462-4f4a-bff8-644511280de0">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Utiliser french-cities</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c63036a6-6679-402a-bae3-7b8f59184f7a">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">set_vintage</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="mi">2024</span><span class="p">,</span> <span class="s2">"Code_INSEE"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7995,214 +8274,57 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>                                                                                                                              </pre>
-</div>
-</div>
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[5]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<div>
-<style scoped="">
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-<thead>
-<tr style="text-align: right;">
-<th></th>
-<th>Département</th>
-<th>Commune</th>
-<th>Phénomène naturel</th>
-<th>Date de début de la période de reconnaissance</th>
-<th>Date de fin de la période de reconnaissance</th>
-<th>Nombre de reconnaissances au cours des 5 dernières années hors PPRN (article 3 de l'arrêté)</th>
-<th>Motivations de la décision</th>
-<th>DEP_CODE</th>
-<th>insee_com</th>
-</tr>
-<tr>
-<th>index</th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th>0</th>
-<td>Nord</td>
-<td>Arnèke</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-<td>59018</td>
-</tr>
-<tr>
-<th>1</th>
-<td>Nord</td>
-<td>Bavinchove</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-<td>59054</td>
-</tr>
-<tr>
-<th>2</th>
-<td>Nord</td>
-<td>Boeschepe</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-<td>59086</td>
-</tr>
-<tr>
-<th>3</th>
-<td>Nord</td>
-<td>Bourbourg</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-<td>59094</td>
-</tr>
-<tr>
-<th>4</th>
-<td>Nord</td>
-<td>Esquelbecq</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>59</td>
-<td>59210</td>
-</tr>
-<tr>
-<th>...</th>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-<td>...</td>
-</tr>
-<tr>
-<th>200</th>
-<td>Pas-de-Calais</td>
-<td>Wizernes</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
-<td>62902</td>
-</tr>
-<tr>
-<th>201</th>
-<td>Pas-de-Calais</td>
-<td>Zoteux</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
-<td>62903</td>
-</tr>
-<tr>
-<th>202</th>
-<td>Pas-de-Calais</td>
-<td>Zouafques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
-<td>62904</td>
-</tr>
-<tr>
-<th>203</th>
-<td>Pas-de-Calais</td>
-<td>Zudausques</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>1.0</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
-<td>62905</td>
-</tr>
-<tr>
-<th>204</th>
-<td>Pas-de-Calais</td>
-<td>Zutkerque</td>
-<td>Inondations et coulées de boue</td>
-<td>02/11/2023</td>
-<td>12/11/2023</td>
-<td>NaN</td>
-<td>L'intensité anormale du phénomène durant l'évè...</td>
-<td>62</td>
-<td>62906</td>
-</tr>
-</tbody>
-</table>
-<p>205 rows × 9 columns</p>
+<pre>                                                                                                                       </pre>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1ae32251-7b91-45f9-a1bf-13e8d926b00e">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c17857ad-bb25-49b9-bbfa-ef26a4e71814">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Analyse-des-r%C3%A9sultats">Analyse des résultats<a class="anchor-link" href="#Analyse-des-r%C3%A9sultats">¶</a></h2>
+<p>Comparer les résultats aux données initiales</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a6e163f1-aaa7-48f4-a713-f07ea0fb3e17">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d4a67a59-2214-4079-841d-23d1930a9a69">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">df</span><span class="p">[</span><span class="s2">"insee_com"</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="s2">"Code INSEE manquant"</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">new</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">"Code_INSEE"</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">new</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">"final"</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=473f3fb2-8b14-44eb-b5e4-96b05d45e675">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>Lister les modifications effectuées :</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=770561aa-386a-472c-842d-f2d959cb7f16">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="p">(</span><span class="n">init</span> <span class="o">==</span> <span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -8213,7 +8335,34 @@ a.anchor-link {
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[6]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
+<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
+<pre>False</pre>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=32c518a7-9a1d-48ba-8f4d-ed3574212681">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="n">ix</span> <span class="o">=</span> <span class="n">init</span><span class="p">[</span><span class="n">init</span> <span class="o">!=</span> <span class="n">new</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+<span class="n">init</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new</span><span class="p">)</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8233,17 +8382,50 @@ a.anchor-link {
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>Code INSEE manquant</th>
-</tr>
-<tr>
-<th>insee_com</th>
-<th></th>
+<th>initial</th>
+<th>final</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<th>False</th>
-<td>205</td>
+<th>155</th>
+<td>38014</td>
+<td>38297</td>
+</tr>
+<tr>
+<th>177</th>
+<td>27270</td>
+<td>27070</td>
+</tr>
+<tr>
+<th>257</th>
+<td>91182</td>
+<td>91228</td>
+</tr>
+<tr>
+<th>287</th>
+<td>74093</td>
+<td>74010</td>
+</tr>
+<tr>
+<th>288</th>
+<td>79041</td>
+<td>79005</td>
+</tr>
+<tr>
+<th>343</th>
+<td>73002</td>
+<td>73212</td>
+</tr>
+<tr>
+<th>365</th>
+<td>73127</td>
+<td>73236</td>
+</tr>
+<tr>
+<th>406</th>
+<td>33091</td>
+<td>33268</td>
 </tr>
 </tbody>
 </table>
