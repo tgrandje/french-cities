@@ -18,8 +18,8 @@ from french_cities import set_vintage
 # =============================================================================
 # Configuration de l'API INSEE
 # =============================================================================
-os.environ["insee_key"] = "t0qbWustzjugGE30n9ZF_sTFJKIa"
-os.environ["insee_secret"] = "SfBaorXTAe2ihbl9PnJUqr7HAMYa"
+os.environ["insee_key"] = "********************"
+os.environ["insee_secret"] = "********************"
 
 
 s = CachedSession()
