@@ -53,7 +53,7 @@ def get_machine_user_agent():
     return f"french-cities-{digest}"
 
 
-def _cleanup_results(df: pd.DataFrame) -> pd.DataFrame:
+def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
     """
     Quick and dirty function to remove multiple candidates for cities
     recognition.
@@ -66,8 +66,10 @@ def _cleanup_results(df: pd.DataFrame) -> pd.DataFrame:
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame with candidates, expected columns are 'adrs_codepostal',
-        'city_cleaned', 'candidat_0', 'dep', 'CODE'
+        DataFrame with candidates, expected columns are alias_postcode,
+        'city_cleaned', 'dep', 'CODE'
+    alias_postcode : str
+        Field used to store the postcode
 
     Returns
     -------
@@ -94,7 +96,7 @@ def _cleanup_results(df: pd.DataFrame) -> pd.DataFrame:
     # Find duplicates (should be induced by multiple candidates for
     # departments computed from postcodes)
 
-    keys = ["adrs_codepostal", "candidat_0", "city_cleaned"]
+    keys = [alias_postcode, "city_cleaned"]
     dups = df[df.duplicated(keys, keep=False)]
 
     # Select where duplicated have been found in at most one department
@@ -382,11 +384,13 @@ def find_city(
     # cities (using dep & city) using fuzzy matching
     ix = addresses[addresses["candidat_0"].isnull()].index
     if len(ix) > 0:
-        missing = addresses.loc[ix, [dep, "city_cleaned"]].rename(
-            {dep: "#dep#"}, axis=1
+        missing = (
+            addresses.loc[ix, [dep, "city_cleaned"]]
+            .rename({dep: "#dep#"}, axis=1)
+            .drop_duplicates()
         )
         addresses = _find_from_fuzzymatch_cities_names(
-            year, missing, "candidat_missing", addresses, dep
+            year, missing, "candidat_missing", addresses, dep, postcode
         )
 
         addresses = addresses.drop_duplicates()
@@ -674,6 +678,7 @@ def _find_from_fuzzymatch_cities_names(
     alias: str,
     addresses: pd.DataFrame,
     alias_dep: str,
+    alias_postcode: str,
 ) -> pd.DataFrame:
     """
     Use fuzzy matching to retrieve cities from their names to find best
@@ -693,6 +698,8 @@ def _find_from_fuzzymatch_cities_names(
         original dataset with "full" addresses
     alias_dep : str
         field used to store the department's code in addresses
+    alias_postcode : str
+        field used to store the postcode in addresses
 
     Returns
     -------
@@ -796,17 +803,24 @@ def _find_from_fuzzymatch_cities_names(
 
     results = look_for.join(results.to_frame("CODE"))
     results = results.rename({"#dep#": alias_dep}, axis=1)
-    addresses = addresses.merge(
+
+    results = addresses[[alias_postcode, alias_dep, "city_cleaned"]].merge(
         results, on=[alias_dep, "city_cleaned"], how="left"
     )
 
-    addresses = _cleanup_results(addresses)
+    results = _cleanup_results(results, alias_postcode=alias_postcode)
 
     try:
         year = int(year)
     except ValueError:
         year = date.today().year
-    addresses = set_vintage(addresses, year, "CODE")
+    results = set_vintage(results, year, "CODE")
+
+    # inner join (previous link at line 811 was of type left and
+    # _cleanup_results did remove unwanted duplicates)
+    addresses = addresses.merge(
+        results, on=[alias_postcode, alias_dep, "city_cleaned"], how="inner"
+    )
 
     addresses = addresses.rename({"CODE": alias}, axis=1)
     return addresses
@@ -881,7 +895,7 @@ def _find_from_geoloc(
             "approximative results."
         )
 
-    if cities is not None:
+    if cities is None:
         cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
         cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
 
@@ -937,8 +951,6 @@ def _query_BAN_csv_geocoder(
     """
     # Use the BAN's CSV geocoder
     logger.info(f"request BAN with CSV geocoder and {components}...")
-
-    # TODO : individual caching of individual results?
 
     files = [
         ("data", addresses.to_csv(index=False)),
