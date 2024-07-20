@@ -108,38 +108,43 @@ def _process_departements_from_postal(
         .drop("_merge", axis=1)
         .drop_duplicates(keep="first")
     )
+    if not postal_codes_ban.empty:
 
-    files = [
-        (
-            "data",
+        files = [
             (
-                "data.csv",
-                postal_codes_ban.to_csv(index=False, encoding="utf8"),
-                "text/csv; charset=utf-8",
+                "data",
+                (
+                    "data.csv",
+                    postal_codes_ban.to_csv(index=False, encoding="utf8"),
+                    "text/csv; charset=utf-8",
+                ),
             ),
-        ),
-        ("postcode", (None, source)),
-        ("result_columns", (None, source)),
-        ("result_columns", (None, "result_context")),
-    ]
+            ("postcode", (None, source)),
+            ("result_columns", (None, source)),
+            ("result_columns", (None, "result_context")),
+        ]
 
-    with patch_the_patch():
-        r = session.post(
-            # recherche grâce à l'API de la BAN
-            "https://api-adresse.data.gouv.fr/search/csv/",
-            files=files,
-        )
+        with patch_the_patch():
+            r = session.post(
+                # recherche grâce à l'API de la BAN
+                "https://api-adresse.data.gouv.fr/search/csv/",
+                files=files,
+            )
 
-    if not r.ok:
-        raise Exception(
-            f"Failed to query BAN's API with {files=} - response was {r}"
+        if not r.ok:
+            raise Exception(
+                f"Failed to query BAN's API with {files=} - response was {r}"
+            )
+        result = pd.read_csv(io.BytesIO(r.content), dtype=str)
+        result[alias] = (
+            result["result_context"]
+            .str.split(",", expand=True)[0]
+            .str.strip(" ")
         )
-    result = pd.read_csv(io.BytesIO(r.content), dtype=str)
-    result[alias] = (
-        result["result_context"].str.split(",", expand=True)[0].str.strip(" ")
-    )
-    result = result.drop("result_context", axis=1)
-    result_ban = result[result[alias].notnull()].drop_duplicates()
+        result = result.drop("result_context", axis=1)
+        result_ban = result[result[alias].notnull()].drop_duplicates()
+    else:
+        result_ban = pd.DataFrame()
 
     result = pd.concat([result_hexasmal, result_ban]).drop_duplicates()
 
@@ -219,6 +224,8 @@ def _process_departements_from_postal(
             result_cedex = result_cedex.loc[
                 ix, [source, alias]
             ].drop_duplicates(keep="first")
+    else:
+        result_cedex = pd.DataFrame()
 
     result = pd.concat(
         [result_hexasmal, result_ban, result_cedex]
@@ -243,6 +250,8 @@ def _process_departements_from_postal(
             session=session,
         )
         last_resort_results = last_resort_results.dropna()
+    else:
+        last_resort_results = pd.DataFrame()
 
     result = pd.concat(
         [result_hexasmal, result_ban, result_cedex, last_resort_results]
