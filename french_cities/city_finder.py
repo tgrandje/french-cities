@@ -2,9 +2,12 @@
 """
 Created on Thu Jul  6 11:38:34 2023
 """
+import diskcache
 import pandas as pd
+import hashlib
 import io
 import logging
+import os
 from requests_cache import CachedSession
 from requests import Session
 from rapidfuzz import fuzz
@@ -17,8 +20,8 @@ from pyproj import Transformer
 from datetime import date, timedelta
 from typing import Union
 import numpy as np
-from functools import partial
-from uuid import uuid4
+import socket
+import time
 from tqdm import tqdm
 from pebble import ThreadPool
 
@@ -29,12 +32,121 @@ except ModuleNotFoundError:
     pass
 
 
+from french_cities import DIR_CACHE
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
 from french_cities.utils import init_pynsee, patch_the_patch
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_machine_user_agent():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+
+    m = hashlib.sha256()
+    m.update(bytes(ip, encoding="utf8"))
+    digest = m.hexdigest()
+
+    return f"french-cities-{digest}"
+
+
+def _cleanup_results(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Quick and dirty function to remove multiple candidates for cities
+    recognition.
+
+    This function process cases where multiple candidates are found, mostly
+    because there may be multiple departments candidates found through
+    postcode.
+    Perfect homonyms between two departments are eliminated.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with candidates, expected columns are 'adrs_codepostal',
+        'city_cleaned', 'candidat_0', 'dep', 'CODE'
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Cleaned DataFrame.
+
+    """
+
+    init_pynsee()
+
+    cities = get_area_list("communes", date="*")
+    cities["TITLE_SHORT"] = (
+        cities["TITLE_SHORT"]
+        .str.upper()
+        .apply(unidecode)
+        .str.split(r"\W+")
+        .str.join(" ")
+        .str.strip(" ")
+    )
+    cities = cities.loc[:, ["TITLE_SHORT", "CODE"]]
+
+    df = df.drop_duplicates(keep="first")
+
+    # Find duplicates (should be induced by multiple candidates for
+    # departments computed from postcodes)
+
+    keys = ["adrs_codepostal", "candidat_0", "city_cleaned"]
+    dups = df[df.duplicated(keys, keep=False)]
+
+    # Select where duplicated have been found in at most one department
+    ok = dups[dups.CODE.notnull()]
+    ok = ok.drop_duplicates(keys, keep=False)
+
+    # And remove their pendant with empty results
+    ko = (
+        df[df["CODE"].isnull()]
+        .reset_index(drop=False)
+        .merge(ok[keys], how="inner", on=keys)
+    )
+    df = df.drop(ko["index"])
+
+    dups = df[df.duplicated(keys, keep=False)]
+
+    # Case where there are exact homonyms cities within each department, drop
+    # the results (and hope for better discrimination using the BAN)
+    dups = (
+        dups.reset_index(drop=False)
+        .merge(cities, on="CODE", how="inner")
+        .drop_duplicates()
+    )
+    dups = dups[dups.duplicated(keys + ["TITLE_SHORT"], keep=False)]
+    df.loc[dups["index"], "CODE"] = np.nan
+    df = df.drop_duplicates()
+
+    # IN any other case, keep the best fuzzy match, whatever the department's
+    # origin
+    dups = df[df.duplicated(keys, keep=False)]
+
+    dups = (
+        dups.reset_index(drop=False)
+        .merge(cities, on="CODE", how="inner")
+        .drop_duplicates()
+    )
+
+    dups["score"] = dups[["city_cleaned", "TITLE_SHORT"]].apply(
+        lambda xy: fuzz.token_sort_ratio(*xy), axis=1
+    )
+
+    dups[["city_cleaned", "TITLE_SHORT", "score"]]
+    ok = (
+        dups[dups.score > 80]
+        .fillna("")
+        .groupby(keys)
+        .apply(lambda df: df[df["score"] == df["score"].max()])
+    )
+    ko = set(dups["index"]) - set(ok["index"])
+    df = df.drop(list(ko))
+
+    return df
 
 
 def find_city(
@@ -134,6 +246,16 @@ def find_city(
 
     """
 
+    if df.index.duplicated().any():
+        raise ValueError("df must have a unique index")
+
+    init_pynsee()
+    if use_nominatim_backend:
+        # Cache pynsee adminexpress geodata
+        logger.info("Retrieving adminexpress geodataframes with pynsee")
+        get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
+        logger.info("done")
+
     if year != "last":
         try:
             int(year)
@@ -157,10 +279,9 @@ def find_city(
         )
         raise ValueError(msg)
 
-    init_pynsee()
-
     if not session:
         session = CachedSession(
+            cache_name=os.path.join(DIR_CACHE, "find-city"),
             allowable_methods=("GET", "POST"),
             expire_after=timedelta(days=30),
         )
@@ -185,8 +306,9 @@ def find_city(
     # Preprocess cities names
     if city in set(df.columns):
         ix = df[(df[city].notnull()) & (df.candidat_0.isnull())].index
-        df.loc[ix, "city_cleaned"] = (
-            df.loc[ix, city]
+        unique = df.loc[ix, [city]].drop_duplicates(keep="first")
+        unique["city_cleaned"] = (
+            unique[city]
             .str.replace(
                 r" \(.*\)$", "", regex=True
             )  # Neuville-Housset (La) -> Neuville-Housset
@@ -200,6 +322,7 @@ def find_city(
             .str.strip(" ")
             .str.replace(r" ?CEDEX$", "", regex=True)  # LOOS CEDEX -> LOOS
         )
+        df = df.merge(unique, on=city, how="left")
 
     # Control which configuration can be used
     # Note that the order is relevant here, as this will determine the result's
@@ -243,10 +366,17 @@ def find_city(
     try:
         if dep not in components_kept:
             addresses = find_departements(
-                addresses, postcode, dep, "postcode", session
+                addresses,
+                postcode,
+                dep,
+                "postcode",
+                session,
+                authorize_duplicates=True,
             )
     except KeyError:
         pass
+
+    addresses = addresses.drop_duplicates(keep="first")
 
     # Where no results, check directly from INSEE's website for obsolete
     # cities (using dep & city) using fuzzy matching
@@ -255,12 +385,10 @@ def find_city(
         missing = addresses.loc[ix, [dep, "city_cleaned"]].rename(
             {dep: "#dep#"}, axis=1
         )
-        missing = _find_from_fuzzymatch_cities_names(
-            year, missing, "candidat_missing"
-        ).rename({"#dep#": dep}, axis=1)
-        addresses = addresses.merge(
-            missing, on=[dep, "city_cleaned"], how="left"
+        addresses = _find_from_fuzzymatch_cities_names(
+            year, missing, "candidat_missing", addresses, dep
         )
+
         addresses = addresses.drop_duplicates()
 
         candidats = ["candidat_0", "candidat_missing"]
@@ -375,6 +503,10 @@ def find_city(
     # with Nominatim geocodage (if use_nominatim_backend set to True)
     ix = df[df["best"].isnull()].index
     if use_nominatim_backend and len(ix) > 0:
+
+        cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
+        cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
+
         for use in [postcode, dep]:
             ix = df[df["best"].isnull()].index
 
@@ -393,6 +525,7 @@ def find_city(
                 year=year,
                 look_for=missing[["query"]],
                 alias="insee_com_nominatim",
+                cities=cities,
             )
             if missing.empty:
                 continue
@@ -443,7 +576,7 @@ def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
 
 
 def _find_with_nominatim_geolocation(
-    year: str, look_for: pd.DataFrame, alias: str
+    year: str, look_for: pd.DataFrame, alias: str, cities: gpd.GeoDataFrame
 ) -> pd.DataFrame:
     """
     Use Nominatim API to geolocate rows of the dataframe. This can be a lengthy
@@ -459,6 +592,8 @@ def _find_with_nominatim_geolocation(
     alias : str
         field to use to store the positive matches' codes into the returned
         dataframe
+    cities : gpd.GeoDataFrame
+        Adminexpress geodataset retrieved with pynsee
 
     Returns
     -------
@@ -468,13 +603,13 @@ def _find_with_nominatim_geolocation(
 
     """
 
-    logger.info(
-        "Please read Nominatim Usage Policy at "
-        "https://operations.osmfoundation.org/policies/nominatim/"
+    logger.warning(
+        "Usage of Nominatim for geocoding is **NOT** encouraged. "
+        "Please, have a look at the Geocoding Policy at "
+        "https://operations.osmfoundation.org/policies/nominatim/ . "
     )
-    user_agent = f"french-cities-{uuid4()}"
     try:
-        geolocator = Nominatim(user_agent=user_agent)
+        geolocator = Nominatim(user_agent=get_machine_user_agent())
     except NameError:
         logger.error(
             "geopy not installed - please install optional dependencies "
@@ -482,28 +617,43 @@ def _find_with_nominatim_geolocation(
         )
         return pd.DataFrame()
 
-    geocode = RateLimiter(
-        partial(
-            geolocator.geocode,
-            language="fr",
-            country_codes="fr",
-            featuretype="settlement ",
-        ),
-        min_delay_seconds=1,
-    )
+    cache_nominatim = diskcache.Cache(os.path.join(DIR_CACHE, "nominatim"))
 
-    logger.info(
+    def french_cities_geocoder(x):
+        try:
+            ret = cache_nominatim[x]
+        except KeyError:
+            ret = geolocator.geocode(
+                x,
+                language="fr",
+                country_codes="fr",
+                featuretype="settlement",
+            )
+            cache_nominatim.set(x, ret, expire=3600 * 24 * 30)
+            logger.debug("Nominatim: new query, waiting !")
+            time.sleep(1)
+        return ret
+
+    # deactivate the minimum delay as it is should be triggered inside
+    # french_cities_geocoder
+    func = RateLimiter(french_cities_geocoder, min_delay_seconds=0)
+
+    estimated_time = len(look_for) / 60
+    logger.warning(
         "Nominatim API will perform requests at a rate of one request "
-        f"per second : this task will need around {len(look_for)}s."
+        f"per second : this task may take up to {round(estimated_time)} min "
+        "(estimation without cache processing)..."
     )
 
-    results = look_for["query"].apply(geocode)
+    tqdm.pandas(desc="Querying Nominatim", leave=False)
+    results = look_for["query"].progress_apply(func)
     look_for = look_for.assign(results=results)
     ix = look_for[look_for.results.notnull()].index
     for f in ["latitude", "longitude"]:
         look_for.loc[ix, f] = look_for.loc[ix, "results"].apply(
             lambda loc: getattr(loc, f)
         )
+    logger.info("done with Nominatim")
 
     look_for = _find_from_geoloc(
         epsg=4326,
@@ -512,13 +662,18 @@ def _find_with_nominatim_geolocation(
         x="longitude",
         y="latitude",
         field_output=alias,
+        cities=cities,
     )
     look_for = look_for.drop(["latitude", "longitude", "results"], axis=1)
     return look_for
 
 
 def _find_from_fuzzymatch_cities_names(
-    year: str, look_for: pd.DataFrame, alias: str
+    year: str,
+    look_for: pd.DataFrame,
+    alias: str,
+    addresses: pd.DataFrame,
+    alias_dep: str,
 ) -> pd.DataFrame:
     """
     Use fuzzy matching to retrieve cities from their names to find best
@@ -533,7 +688,11 @@ def _find_from_fuzzymatch_cities_names(
         trying to find a match to
     alias : str
         field to use to store the positive matches' codes into the returned
-        datafram
+        dataframe
+    addresses : pd.DataFrame
+        original dataset with "full" addresses
+    alias_dep : str
+        field used to store the department's code in addresses
 
     Returns
     -------
@@ -560,44 +719,97 @@ def _find_from_fuzzymatch_cities_names(
     df = df.reset_index(drop=False)
 
     results = []
-    for dep in look_for["#dep#"].unique():
-        ix1 = look_for[look_for["#dep#"] == dep].index
-        ix2 = df[df.dep == dep].index
+    desc = "fuzzy matching cities / dep"
+    for dep in tqdm(look_for["#dep#"].unique(), desc=desc, leave=False):
+        if not pd.isnull(dep):
+            ix1 = look_for[look_for["#dep#"] == dep].index
+            ix2 = df[df.dep == dep].index
+        else:
+            ix1 = look_for[look_for["#dep#"].isnull()].index
+            ix2 = df.index
         match_ = pd.DataFrame(
             cdist(
                 look_for.loc[ix1, "city_cleaned"],
                 df.loc[ix2, "TITLE_SHORT"],
                 score_cutoff=80,
-                workers=-1,
+                # scorer=fuzz.token_set_ratio,
+                workers=1,  # Nota : workers=-1 currently crashes python
             ),
             index=ix1,
             columns=df.loc[ix2, ["TITLE_SHORT", "CODE"]],
         ).replace(0, np.nan)
 
         try:
-            results.append(
-                pd.Series(
-                    match_.dropna(how="all", axis=1)
-                    .dropna(how="all")
-                    .idxmax(axis=1),
-                    index=ix1,
-                )
+            this_result = match_.dropna(how="all", axis=1).dropna(how="all")
+            best = this_result.max(axis=1)
+            # Keep only best results
+            this_result = this_result.apply(lambda s: (s == best.values) * s)
+            this_result = pd.Series(
+                this_result.T.drop_duplicates(
+                    keep=False
+                )  # drop all equal scores
+                .T.dropna(how="all")
+                .idxmax(axis=1),
+                index=ix1,
             )
+            this_result = this_result.dropna()
+            results.append(this_result)
+        except ValueError:
+            pass
+
+        # If no result with simple ratio, use WRatio
+        ix1 = list(set(ix1) - set(this_result.index))
+
+        match_ = pd.DataFrame(
+            cdist(
+                look_for.loc[ix1, "city_cleaned"],
+                df.loc[ix2, "TITLE_SHORT"],
+                score_cutoff=90,
+                scorer=fuzz.WRatio,
+                workers=1,  # Nota : workers=-1 currently crashes python
+            ),
+            index=ix1,
+            columns=df.loc[ix2, ["TITLE_SHORT", "CODE"]],
+        ).replace(0, np.nan)
+
+        try:
+            this_result = match_.dropna(how="all", axis=1).dropna(how="all")
+            best = this_result.max(axis=1)
+            # Keep only best results
+            this_result = this_result.apply(lambda s: (s == best.values) * s)
+            this_result = pd.Series(
+                this_result.T.drop_duplicates(
+                    keep=False
+                )  # drop all equal scores
+                .T.dropna(how="all")
+                .idxmax(axis=1),
+                index=ix1,
+            )
+            this_result = this_result.dropna()
+            results.append(this_result)
         except ValueError:
             continue
 
+    results = [x for x in results if not x.empty]
     results = pd.concat(results, ignore_index=False).sort_index()
     results = results.str[1]
+
+    results = look_for.join(results.to_frame("CODE"))
+    results = results.rename({"#dep#": alias_dep}, axis=1)
+    addresses = addresses.merge(
+        results, on=[alias_dep, "city_cleaned"], how="left"
+    )
+
+    addresses = _cleanup_results(addresses)
+
     try:
         year = int(year)
     except ValueError:
         year = date.today().year
-    results = set_vintage(results.to_frame("CODE"), year, "CODE")
+    addresses = set_vintage(addresses, year, "CODE")
 
-    results = look_for.join(results)
-
-    results = results.rename({"CODE": alias}, axis=1)
-    return results
+    addresses = addresses.rename({"CODE": alias}, axis=1)
+    return addresses
 
 
 def _find_from_geoloc(
@@ -607,6 +819,7 @@ def _find_from_geoloc(
     x: str = "x",
     y: str = "y",
     field_output: str = "insee_com",
+    cities: gpd.GeoDataFrame = None,
 ) -> pd.DataFrame:
     """
     Find cities codes from coordinates using a spatial join.
@@ -634,6 +847,9 @@ def _find_from_geoloc(
         not available. The default is "y".
     field_output : str, optional
         Column to store the cities code into. The default is "insee_com".
+    cities : gpd.GeoDataFrame, optional
+        Adminexpress geodataset retrieved with pynsee. If None, will be
+        retrieved later on. None by default.
 
     Raises
     ------
@@ -665,8 +881,9 @@ def _find_from_geoloc(
             "approximative results."
         )
 
-    com = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
-    com = gpd.GeoDataFrame(com).set_crs("EPSG:3857")
+    if cities is not None:
+        cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
+        cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
 
     transformer = Transformer.from_crs(epsg, 3857, accuracy=1, always_xy=True)
 
@@ -680,7 +897,7 @@ def _find_from_geoloc(
     df = gpd.GeoDataFrame(temp.to_frame().join(df), crs=3857)
     rename = {"insee_com": field_output}
     df = df.sjoin(
-        com[["insee_com", "geometry"]].rename(rename, axis=1), how="left"
+        cities[["insee_com", "geometry"]].rename(rename, axis=1), how="left"
     )
     df = df.drop(["geometry", "index_right"], axis=1)
 
@@ -720,6 +937,8 @@ def _query_BAN_csv_geocoder(
     """
     # Use the BAN's CSV geocoder
     logger.info(f"request BAN with CSV geocoder and {components}...")
+
+    # TODO : individual caching of individual results?
 
     files = [
         ("data", addresses.to_csv(index=False)),
@@ -834,7 +1053,7 @@ def _query_BAN_individual_geocoder(
     #     np.array(addresses.full.apply(get).tolist()).flatten()
     #     )
 
-    args = addresses.full.str.replace("\W", "", regex=True).tolist()
+    args = addresses.full.str.replace(r"\W+", " ", regex=True).tolist()
     results = []
     with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
         with ThreadPool(threads) as pool:
