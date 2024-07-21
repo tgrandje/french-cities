@@ -333,7 +333,7 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     if estimated_time > 1:
         logger.warning(
             "Due to INSEE's API querying rate, the following process may "
-            f"take up to {round(estimated_time)} min "
+            f"take up to {round(estimated_time)+1} min "
             "(estimation without cache processing)..."
         )
     uniques.loc[ix, "PROJECTED"] = uniques.loc[ix, field].progress_apply(
