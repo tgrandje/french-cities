@@ -24,6 +24,7 @@ import socket
 import time
 from tqdm import tqdm
 from pebble import ThreadPool
+import warnings
 
 try:
     from geopy.extra.rate_limiter import RateLimiter
@@ -248,15 +249,11 @@ def find_city(
 
     """
 
-    if df.index.duplicated().any():
-        raise ValueError("df must have a unique index")
+    index_original_name = df.index.name
+    df.index.name = "#INDEX#"
+    df = df.reset_index(drop=False)
 
     init_pynsee()
-    if use_nominatim_backend:
-        # Cache pynsee adminexpress geodata
-        logger.info("Retrieving adminexpress geodataframes with pynsee")
-        get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
-        logger.info("done")
 
     if year != "last":
         try:
@@ -497,7 +494,7 @@ def find_city(
         pass
     addresses = addresses.drop_duplicates(components_kept)
 
-    df = df.reset_index(drop=False).merge(
+    df = df.merge(
         addresses.replace("", np.nan), how="left", on=components_kept
     )
     df["best"] = _combine(df, ["candidat_0", "best"])
@@ -508,8 +505,11 @@ def find_city(
     ix = df[df["best"].isnull()].index
     if use_nominatim_backend and len(ix) > 0:
 
+        # Cache pynsee adminexpress geodata
+        logger.info("Retrieving adminexpress geodataframes with pynsee")
         cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
         cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
+        logger.info("done")
 
         for use in [postcode, dep]:
             ix = df[df["best"].isnull()].index
@@ -561,7 +561,8 @@ def find_city(
     if drop_dep:
         df = df.drop(dep, axis=1)
 
-    df = df.set_index("index")
+    df = df.set_index("#INDEX#")
+    df.index.name = index_original_name
     return df
 
 
@@ -575,7 +576,9 @@ def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
     first, *next_ = columns
     s = df[first]
     for field in next_:
-        s = s.combine_first(df[field])
+        with warnings.catch_warnings():
+            warnings.simplefilter(action="ignore", category=FutureWarning)
+            s = s.combine_first(df[field])
     return s
 
 
@@ -627,12 +630,24 @@ def _find_with_nominatim_geolocation(
         try:
             ret = cache_nominatim[x]
         except KeyError:
+            # Look first at settlements
+            # doc : A featureType of settlement selects any human inhabited
+            # feature from 'state' down to 'neighbourhood'.
+            # https://nominatim.org/release-docs/latest/api/Search/
             ret = geolocator.geocode(
                 x,
                 language="fr",
                 country_codes="fr",
                 featuretype="settlement",
             )
+            if not ret:
+                # if no settlement found, search any kind of location
+                time.sleep(1)
+                ret = geolocator.geocode(
+                    x,
+                    language="fr",
+                    country_codes="fr",
+                )
             cache_nominatim.set(x, ret, expire=3600 * 24 * 30)
             logger.debug("Nominatim: new query, waiting !")
             time.sleep(1)
@@ -798,29 +813,36 @@ def _find_from_fuzzymatch_cities_names(
             continue
 
     results = [x for x in results if not x.empty]
-    results = pd.concat(results, ignore_index=False).sort_index()
-    results = results.str[1]
-
-    results = look_for.join(results.to_frame("CODE"))
-    results = results.rename({"#dep#": alias_dep}, axis=1)
-
-    results = addresses[[alias_postcode, alias_dep, "city_cleaned"]].merge(
-        results, on=[alias_dep, "city_cleaned"], how="left"
-    )
-
-    results = _cleanup_results(results, alias_postcode=alias_postcode)
-
     try:
-        year = int(year)
+        results = pd.concat(results, ignore_index=False).sort_index()
     except ValueError:
-        year = date.today().year
-    results = set_vintage(results, year, "CODE")
+        # No objects to concatenate
+        addresses[alias] = np.nan
+    else:
+        results = results.str[1]
 
-    # inner join (previous link at line 811 was of type left and
-    # _cleanup_results did remove unwanted duplicates)
-    addresses = addresses.merge(
-        results, on=[alias_postcode, alias_dep, "city_cleaned"], how="inner"
-    )
+        results = look_for.join(results.to_frame("CODE"))
+        results = results.rename({"#dep#": alias_dep}, axis=1)
+
+        results = addresses[[alias_postcode, alias_dep, "city_cleaned"]].merge(
+            results, on=[alias_dep, "city_cleaned"], how="left"
+        )
+
+        results = _cleanup_results(results, alias_postcode=alias_postcode)
+
+        try:
+            year = int(year)
+        except ValueError:
+            year = date.today().year
+        results = set_vintage(results, year, "CODE")
+
+        # inner join (previous link at line 811 was of type left and
+        # _cleanup_results did remove unwanted duplicates)
+        addresses = addresses.merge(
+            results,
+            on=[alias_postcode, alias_dep, "city_cleaned"],
+            how="inner",
+        )
 
     addresses = addresses.rename({"CODE": alias}, axis=1)
     return addresses
