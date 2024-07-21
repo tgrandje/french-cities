@@ -316,6 +316,7 @@ def _process_departements_from_insee_code(
     deps = get_area_list("departements", date="*").rename(
         {"CODE": "#DEP_CODE#"}, axis=1
     )
+    deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
 
     df[alias] = df[source].str[:2]
 
@@ -323,9 +324,7 @@ def _process_departements_from_insee_code(
     df.loc[ix, alias] = df.loc[ix, source].str[:3]
 
     # Remove unvalid results (ultramarine collectivity, monaco, ...)
-    df = df.merge(
-        deps[["#DEP_CODE#"]], left_on=alias, right_on="#DEP_CODE#", how="left"
-    )
+    df = df.merge(deps, left_on=alias, right_on="#DEP_CODE#", how="left")
     df = df.drop(alias, axis=1).rename({"#DEP_CODE#": alias}, axis=1)
     return df
 
