@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
 
-from pynsee.utils import clear_all_cache
-from pynsee.utils.init_conn import init_conn
 import os
 from pathlib import Path
 from contextlib import contextmanager
+import shutil
+
+import pynsee.utils
+from pynsee.utils.init_conn import init_conn
 import requests_cache
+
+from french_cities import DIR_CACHE
+
+
+def clear_all_cache():
+    "Clear french-cities cache first, then pynsee's"
+    [shutil.rmtree(f.path) for f in os.scandir(DIR_CACHE) if f.is_dir()]
+    [os.unlink(f.path) for f in os.scandir(DIR_CACHE) if not f.is_dir()]
+    pynsee.utils.clear_all_cache()
 
 
 def init_pynsee():

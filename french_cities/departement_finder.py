@@ -2,6 +2,8 @@
 """
 Created on Thu Jul  6 11:38:34 2023
 """
+import diskcache
+import os
 import pandas as pd
 import io
 from requests_cache import CachedSession
@@ -16,6 +18,7 @@ from pynsee.localdata import get_area_list
 from rapidfuzz import fuzz, process
 from unidecode import unidecode
 
+from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee, patch_the_patch
 
 
@@ -23,7 +26,11 @@ logger = logging.getLogger(__name__)
 
 
 def _process_departements_from_postal(
-    df: pd.DataFrame, source: str, alias: str, session: Session = None
+    df: pd.DataFrame,
+    source: str,
+    alias: str,
+    session: Session = None,
+    authorize_duplicates: bool = False,
 ) -> pd.DataFrame:
     """
     Retrieve departement's code from postoffice code. Adds the result as a new
@@ -42,6 +49,11 @@ def _process_departements_from_postal(
     session : Session, optional
         Web session. The default is None (and will use a CachedSession with
         30 days expiration)
+    authorize_duplicates : bool, optional
+        If True, authorize duplication of results when multiple results are
+        acceptable for a given postcode (for instance, 13780 can result to
+        either 13 or 83). If False, duplicates will be removed, hence no
+        result will be available. False by default.
 
     Returns
     -------
@@ -50,43 +62,100 @@ def _process_departements_from_postal(
 
     """
 
+    cache_departments = diskcache.Cache(os.path.join(DIR_CACHE, "deps"))
+
     if not session:
         session = CachedSession(
+            cache_name=os.path.join(DIR_CACHE, "find-department"),
             allowable_methods=("GET", "POST"),
             expire_after=timedelta(days=30),
         )
 
-    postal_codes = df[[source]].drop_duplicates(keep="first")
-    files = [
-        (
-            "data",
-            (
-                "data.csv",
-                postal_codes.to_csv(index=False, encoding="utf8"),
-                "text/csv; charset=utf-8",
-            ),
-        ),
-        ("postcode", (None, source)),
-        ("result_columns", (None, source)),
-        ("result_columns", (None, "result_context")),
-    ]
+    df["#CachedResult#"] = df[source].apply(cache_departments.get)
 
-    with patch_the_patch():
-        r = session.post(
-            # recherche grâce à l'API de la BAN
-            "https://api-adresse.data.gouv.fr/search/csv/",
-            files=files,
-        )
-
-    if not r.ok:
-        raise Exception(
-            f"Failed to query BAN's API with {files=} - response was {r}"
-        )
-    result = pd.read_csv(io.BytesIO(r.content), dtype=str)
-    result[alias] = (
-        result["result_context"].str.split(",", expand=True)[0].str.strip(" ")
+    # Download official postcodes dataset from API
+    # https://datanova.laposte.fr/datasets/laposte-hexasmal
+    url = (
+        "https://datanova.laposte.fr/data-fair/api/v1/datasets/"
+        "laposte-hexasmal/raw"
     )
-    result = result.drop("result_context", axis=1)
+
+    r = session.get(url)
+    base = pd.read_csv(
+        io.BytesIO(r.content), sep=";", encoding="cp1252", dtype=str
+    )
+    base = base[["#Code_commune_INSEE", "Code_postal"]]
+    base = _process_departements_from_insee_code(
+        base, "#Code_commune_INSEE", alias
+    )
+    base = base[["Code_postal", alias]].rename({"Code_postal": source}, axis=1)
+    base = base.drop_duplicates(keep="first")
+
+    ix = df[df["#CachedResult#"].isnull()].index
+
+    result_hexasmal = df.loc[ix].merge(base, on=source, how="inner")
+    result_hexasmal = (
+        result_hexasmal[[alias, source]].dropna().drop_duplicates()
+    )
+
+    ix = df[df["#CachedResult#"].isnull()].index
+    postal_codes_ban = (
+        df.loc[ix, [source]]
+        .merge(
+            result_hexasmal[[source]], on=source, how="left", indicator=True
+        )
+        .query('_merge=="left_only"')
+        .drop("_merge", axis=1)
+        .drop_duplicates(keep="first")
+    )
+    if not postal_codes_ban.empty:
+
+        files = [
+            (
+                "data",
+                (
+                    "data.csv",
+                    postal_codes_ban.to_csv(index=False, encoding="utf8"),
+                    "text/csv; charset=utf-8",
+                ),
+            ),
+            ("postcode", (None, source)),
+            ("result_columns", (None, source)),
+            ("result_columns", (None, "result_context")),
+        ]
+
+        with patch_the_patch():
+            r = session.post(
+                # recherche grâce à l'API de la BAN
+                "https://api-adresse.data.gouv.fr/search/csv/",
+                files=files,
+            )
+
+        if not r.ok:
+            raise Exception(
+                f"Failed to query BAN's API with {files=} - response was {r}"
+            )
+        result = pd.read_csv(io.BytesIO(r.content), dtype=str)
+        result[alias] = (
+            result["result_context"]
+            .str.split(",", expand=True)[0]
+            .str.strip(" ")
+        )
+        result = result.drop("result_context", axis=1)
+        result_ban = result[result[alias].notnull()].drop_duplicates()
+    else:
+        result_ban = pd.DataFrame()
+
+    result = pd.concat([result_hexasmal, result_ban]).drop_duplicates()
+
+    ix = df[df["#CachedResult#"].isnull()].index
+    postal_codes_cedex = (
+        df.loc[ix, [source]]
+        .merge(result[[source]], on=source, how="left", indicator=True)
+        .query('_merge=="left_only"')
+        .drop("_merge", axis=1)
+        .drop_duplicates(keep="first")
+    )
 
     # where code is unknown, use Christian Quest Dataset with Cedex codes and
     # OpenDataSoft API (v2.1 contrairement à la doc disponible) en Freemium
@@ -122,11 +191,10 @@ def _process_departements_from_postal(
             dict_.update({source: x})
         return results
 
-    ix = result[result[alias].isnull()].index
-    if len(ix) > 0:
+    if not postal_codes_cedex.empty:
         logger.info("postal codes unrecognized - maybe Cedex codes")
-        args = result.loc[ix, source].dropna().tolist()
-        results_cedex = []
+        args = postal_codes_cedex[source].dropna().tolist()
+        result_cedex = []
         with tqdm(
             total=len(args), desc="Querying OpenDataSoft API", leave=False
         ) as pbar:
@@ -137,85 +205,88 @@ def _process_departements_from_postal(
                     try:
                         this_result = next(results_iterator)
                         if this_result:
-                            results_cedex += this_result
+                            result_cedex += this_result
                     except StopIteration:
                         break
                     finally:
                         pbar.update(1)
-        results_cedex = pd.DataFrame(results_cedex)
+        result_cedex = pd.DataFrame(result_cedex).drop_duplicates()
 
-        # Select main city in case of discordant results. For instance, with
-        # postcode=74105, you'll get:
-        #    insee       nom_dep          libelle          nom_com
-        # 0  74145  HAUTE-SAVOIE  ANNEMASSE CEDEX          Juvigny
-        # 1  74012  HAUTE-SAVOIE  ANNEMASSE CEDEX        Annemasse
-        # 2  74305  HAUTE-SAVOIE  ANNEMASSE CEDEX   Ville-la-Grand
-        # 3  74298  HAUTE-SAVOIE  ANNEMASSE CEDEX  Vétraz-Monthoux
-
-        if not results_cedex.empty:
-            for f in ["libelle", "nom_com"]:
-                results_cedex[f] = (
-                    results_cedex[f]
-                    .fillna("")
-                    .str.upper()
-                    .apply(unidecode)
-                    .str.split(r"\W+")
-                    .str.join(" ")
-                    .str.strip(" ")
-                    .replace("", np.nan)
-                )
-            results_cedex["libelle"] = results_cedex["libelle"].str.replace(
-                r" CEDEX", ""
-            )
-            results_cedex["score"] = results_cedex[
-                ["libelle", "nom_com"]
-            ].apply(lambda xy: fuzz.token_set_ratio(*xy), axis=1)
-
-            results_cedex = results_cedex.sort_values([source, "score"])
-            results_cedex = results_cedex.drop_duplicates(source, keep="last")
-            results_cedex = results_cedex.drop(
-                ["nom_com", "score", "libelle"], axis=1
-            )
-            results_cedex = results_cedex.drop_duplicates()
-
-            results_cedex = _process_departements_from_insee_code(
-                results_cedex,
+        if not result_cedex.empty:
+            # Keep only results with valid department
+            result_cedex = _process_departements_from_insee_code(
+                result_cedex,
                 source="insee",
-                alias="dep_cedex",
+                alias=alias,
                 session=session,
             )
-            result = result.merge(results_cedex, on=source, how="left")
-            result.loc[ix, alias] = result.loc[ix, "dep_cedex"]
-            result = result.drop(
-                list(
-                    set(results_cedex.columns)
-                    - {
-                        source,
-                    }
-                ),
-                axis=1,
-            )
+            ix = result_cedex[result_cedex[alias].notnull()].index
+            result_cedex = result_cedex.loc[
+                ix, [source, alias]
+            ].drop_duplicates(keep="first")
+    else:
+        result_cedex = pd.DataFrame()
 
-    ix = result[result[alias].isnull()].index
-    if len(ix) > 0:
+    result = pd.concat(
+        [result_hexasmal, result_ban, result_cedex]
+    ).drop_duplicates()
+
+    ix = df[df["#CachedResult#"].isnull()].index
+    postal_codes_missing = (
+        df.loc[ix, [source]]
+        .merge(result[[source]], on=source, how="left", indicator=True)
+        .query('_merge=="left_only"')
+        .drop("_merge", axis=1)
+        .drop_duplicates(keep="first")
+    )
+
+    if not postal_codes_missing.empty:
         # Still no results -> assume we can use the first characters of
         # postcode anyway
-        result.loc[ix, alias] = _process_departements_from_insee_code(
-            result.loc[ix],
+        last_resort_results = _process_departements_from_insee_code(
+            postal_codes_missing,
             source=source,
             alias="dep",
             session=session,
-        )["dep"]
+        )
+        last_resort_results = last_resort_results.dropna()
+    else:
+        last_resort_results = pd.DataFrame()
+
+    result = pd.concat(
+        [result_hexasmal, result_ban, result_cedex, last_resort_results]
+    )
+
+    result = result.drop_duplicates()
+    if not authorize_duplicates:
+        result = result.drop_duplicates(source, keep=False)
 
     logger.info("résultat obtenu")
 
-    df = df.merge(result, on=source, how="left")
+    df = df.merge(result, on=source, how="left").drop_duplicates()
+    ix = df[df["#CachedResult#"].notnull()].index
+    df.loc[ix, alias] = df.loc[ix, "#CachedResult#"]
+    ix = df[df["#CachedResult#"].isnull()].index
 
+    new_cache_values = df.loc[ix, [source, alias]].drop_duplicates()
+
+    # Cache only non-duplicated results!
+    new_cache_values = new_cache_values.drop_duplicates(source, keep=False)
+
+    new_cache_values = dict(new_cache_values.values)
+    for key, val in new_cache_values.items():
+        cache_departments[key] = val
+
+    df = df.drop("#CachedResult#", axis=1)
     return df
 
 
 def _process_departements_from_insee_code(
-    df: pd.DataFrame, source: str, alias: str, session: Session = None
+    df: pd.DataFrame,
+    source: str,
+    alias: str,
+    session: Session = None,
+    authorize_duplicates: bool = False,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from official french cities codes (COG INSEE).
@@ -230,22 +301,31 @@ def _process_departements_from_insee_code(
     alias : str
         Column to store the departements' codes unto
     session : Session, optional
-        Web session. The default is None (and will use a CachedSession with
-        30 days expiration)
         **ignored argument, set only for coherence with
         _process_departements_from_postal**
-
+    authorize_duplicates : bool, optional
+        **ignored argument, set only for coherence with
+        _process_departements_from_postal**
     Returns
     -------
     df : pd.DataFrame
         Updated DataFrame with departement's codes
 
     """
+    init_pynsee()
+    deps = get_area_list("departements", date="*").rename(
+        {"CODE": "#DEP_CODE#"}, axis=1
+    )
+    deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
+
     df[alias] = df[source].str[:2]
 
     ix = df[df[alias] == "97"].index
     df.loc[ix, alias] = df.loc[ix, source].str[:3]
 
+    # Remove unvalid results (ultramarine collectivity, monaco, ...)
+    df = df.merge(deps, left_on=alias, right_on="#DEP_CODE#", how="left")
+    df = df.drop(alias, axis=1).rename({"#DEP_CODE#": alias}, axis=1)
     return df
 
 
@@ -255,6 +335,7 @@ def find_departements(
     alias: str,
     type_code: str,
     session: Session = None,
+    authorize_duplicates: bool = False,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from postal or official codes (ie. INSEE COG)'
@@ -274,6 +355,11 @@ def find_departements(
     session : Session, optional
         Web session. The default is None (and will use a CachedSession with
         30 days expiration)
+    authorize_duplicates : bool, optional
+        If True, authorize duplication of results when multiple results are
+        acceptable for a given postcode (for instance, 13780 can result to
+        either 13 or 83 ). If False, duplicates will be removed, hence no
+        result will be available. False by default.
 
     Raises
     ------
@@ -300,7 +386,7 @@ def find_departements(
         func = _process_departements_from_postal
     elif type_code == "insee":
         func = _process_departements_from_insee_code
-    return func(df, source, alias, session)
+    return func(df, source, alias, session, authorize_duplicates)
 
 
 def find_departements_from_names(

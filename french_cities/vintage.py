@@ -2,17 +2,73 @@
 """
 Created on Fri Jul  7 09:17:12 2023
 """
-import pandas as pd
+
+import os
 from functools import partial
-from tqdm import tqdm
 import logging
 
+import diskcache
+import pandas as pd
+from tqdm import tqdm
+
+from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee
 from pynsee.localdata import get_area_list
 from pynsee.localdata import get_ascending_area
 from pynsee.localdata import get_area_projection
 
 logger = logging.getLogger(__name__)
+
+
+cache_projection = diskcache.Cache(os.path.join(DIR_CACHE, "projection"))
+
+
+@cache_projection.memoize(tag="city_projection")
+def get_city(x: str, starting_dates: list, projection_date: str) -> str:
+    """
+    Try to get a city's valid official code at projection_date.
+
+    Parameters
+    ----------
+    x : str
+        Obsolete INSEE code (5 digits).
+    starting_dates : list
+        List of starting dates to query a projection from. Each date should be
+        in a "YYYY-MM-DD" format.
+    projection_date : str
+        Date to project the obsolete code into. Should be in the "YYYY-MM-DD"
+        format.
+
+    Returns
+    -------
+    code
+        Valid insee code (5 digits)
+
+    """
+    for date_init in starting_dates:
+        # Hack to deactivate standard error log entries by pynsee which are
+        # concieved with a valid date in mind.
+        previous_level = logging.root.manager.disable
+        logging.disable(logging.ERROR)
+        df = get_area_projection(
+            code=x,
+            area="commune",
+            date=date_init,
+            dateProjection=projection_date,
+        )
+        try:
+            df = df.drop("DATE_DELETION", axis=1)
+        except (KeyError, AttributeError):
+            pass
+        logging.disable(previous_level)
+
+        if df is not None:
+            break
+    try:
+        return df.at[0, "code"]
+    except Exception:
+        logger.error(f"No projection found for city {x}")
+        return None
 
 
 def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
@@ -253,13 +309,11 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     cities = _get_cities_year_full(year, set(uniques[field]))
 
     # Uptodate cities (cities, municipal districts, delegated cities, ...)
-    uniques = uniques.merge(
-        cities, left_on=field, right_on="CODE", how="left"
-    )
+    uniques = uniques.merge(cities, left_on=field, right_on="CODE", how="left")
     uniques = uniques.rename({"NEW_CODE": "PROJECTED"}, axis=1)
 
-    # Obsolete cities : merge, etc. : look for projection starting from an old
-    # date, using INSEE API
+    # Obsolete cities : look for existing projections from old starting dates,
+    # using INSEE API
     date = f"{year}-01-01"
     starting_dates = [
         "1943-01-01",
@@ -269,31 +323,22 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
         "2010-01-01",
     ]
 
-    def get_city(x):
-        for date_init in starting_dates:
-            # Hack to deactivate standard error log entries by pynsee which are
-            # concieved with a valid date in mind.
-            previous_level = logging.root.manager.disable
-            logging.disable(logging.ERROR)
-            df = get_area_projection(
-                code=x, area="commune", date=date_init, dateProjection=date
-            )
-            try:
-                df = df.drop("DATE_DELETION", axis=1)
-            except (KeyError, AttributeError):
-                pass
-            logging.disable(previous_level)
-
-            if df is not None:
-                break
-        try:
-            return df.at[0, "code"]
-        except Exception:
-            logger.error(f"No projection found for city {x}")
-            return None
+    partial_get_city = partial(
+        get_city, starting_dates=starting_dates, projection_date=date
+    )
 
     ix = uniques[uniques.PROJECTED.isnull()].index
-    uniques.loc[ix, "PROJECTED"] = uniques.loc[ix, field].apply(get_city)
+    tqdm.pandas(desc="Looking for projections from past", leave=False)
+    estimated_time = len(ix) / 30
+    if estimated_time > 1:
+        logger.warning(
+            "Due to INSEE's API querying rate, the following process may "
+            f"take up to {round(estimated_time)+1} min "
+            "(estimation without cache processing)..."
+        )
+    uniques.loc[ix, "PROJECTED"] = uniques.loc[ix, field].progress_apply(
+        partial_get_city
+    )
 
     uniques = dict(uniques[[field, "PROJECTED"]].values)
 
