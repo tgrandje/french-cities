@@ -63,8 +63,8 @@ print("-" * 50)
 # =============================================================================
 # Utilisation de french-cities pour trouver les codes communes manquants
 # =============================================================================
-
-missing = data[data.codeInsee.isnull()]
+ix = data[data.codeInsee.isnull()].index
+missing = data.loc[ix]
 
 # Au besoin, vérifier que le système de projection des coordonnées est en
 # EPSG 2154
@@ -124,7 +124,8 @@ print(
 )
 print("-" * 50)
 print("nouvel essai avec Nominatim :")
-missing = data[data.codeInsee.isnull()]
+ix = data[data.codeInsee.isnull()].index
+missing = data.loc[ix]
 # Concaténer les champs adresses :
 cols = [f"adresse{x}" for x in range(1, 4)]
 missing["adresse"] = (
