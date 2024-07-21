@@ -660,7 +660,7 @@ def _find_with_nominatim_geolocation(
     estimated_time = len(look_for) / 60
     logger.warning(
         "Nominatim API will perform requests at a rate of one request "
-        f"per second : this task may take up to {round(estimated_time)} min "
+        f"per second : this task may take up to {round(estimated_time)+1} min "
         "(estimation without cache processing)..."
     )
 
@@ -824,11 +824,13 @@ def _find_from_fuzzymatch_cities_names(
         results = look_for.join(results.to_frame("CODE"))
         results = results.rename({"#dep#": alias_dep}, axis=1)
 
-        results = addresses[[alias_postcode, alias_dep, "city_cleaned"]].merge(
-            results, on=[alias_dep, "city_cleaned"], how="left"
-        )
-
-        results = _cleanup_results(results, alias_postcode=alias_postcode)
+        if alias_postcode:
+            results = addresses[
+                [alias_postcode, alias_dep, "city_cleaned"]
+            ].merge(results, on=[alias_dep, "city_cleaned"], how="left")
+            results = _cleanup_results(results, alias_postcode=alias_postcode)
+        else:
+            pass
 
         try:
             year = int(year)
@@ -838,11 +840,14 @@ def _find_from_fuzzymatch_cities_names(
 
         # inner join (previous link at line 811 was of type left and
         # _cleanup_results did remove unwanted duplicates)
-        addresses = addresses.merge(
-            results,
-            on=[alias_postcode, alias_dep, "city_cleaned"],
-            how="inner",
-        )
+        if alias_postcode:
+            addresses = addresses.merge(
+                results,
+                on=[alias_postcode, alias_dep, "city_cleaned"],
+                how="inner",
+            )
+        else:
+            addresses = results
 
     addresses = addresses.rename({"CODE": alias}, axis=1)
     return addresses
