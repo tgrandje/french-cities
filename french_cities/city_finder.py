@@ -143,7 +143,7 @@ def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
     ok = (
         dups[dups.score > 80]
         .fillna("")
-        .groupby(keys)
+        .groupby(keys, as_index=False)
         .apply(lambda df: df[df["score"] == df["score"].max()])
     )
     ko = set(dups["index"]) - set(ok["index"])
