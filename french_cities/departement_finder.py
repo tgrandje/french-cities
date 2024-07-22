@@ -432,16 +432,19 @@ def find_departements_from_names(
         .str.replace(r"\W+", " ", regex=True)
     )
 
-    df[alias] = df["FORMATTED"].apply(
-        lambda x: candidates[
-            process.extractOne(
-                x,
-                candidates_keys,
-                scorer=fuzz.ratio,
-                score_cutoff=80,
-            )[0]
-        ]
-    )
+    def try_extract_one(x):
+        results = process.extractOne(
+            x,
+            candidates_keys,
+            scorer=fuzz.ratio,
+            score_cutoff=80,
+        )
+        try:
+            return candidates[results[0]]
+        except (TypeError, KeyError):
+            return None
+
+    df[alias] = df["FORMATTED"].apply(try_extract_one)
     df = df.drop("FORMATTED", axis=1)
 
     return df
