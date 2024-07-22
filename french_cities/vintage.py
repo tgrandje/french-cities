@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jul  7 09:17:12 2023
+
+Module used to project a dataset into a known vintage, wether the original
+vintage is known or not.
 """
 
 import os
@@ -9,13 +12,14 @@ import logging
 
 import diskcache
 import pandas as pd
+from pynsee.localdata import get_area_list
+from pynsee.localdata import get_ascending_area
+from pynsee.localdata import get_area_projection
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee
-from pynsee.localdata import get_area_list
-from pynsee.localdata import get_ascending_area
-from pynsee.localdata import get_area_projection
+from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +70,8 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
             break
     try:
         return df.at[0, "code"]
-    except Exception:
-        logger.error(f"No projection found for city {x}")
+    except (ValueError, AttributeError):
+        logger.error("No projection found for city %s", x)
         return None
 
 
@@ -146,7 +150,7 @@ def _get_cities_year(year: int) -> pd.DataFrame:
 
     """
     date = f"{year}-01-01"
-    cog = get_area_list(area="communes", date=date)
+    cog = get_cities_and_ultramarines(date=date)
     try:
         cog = cog.drop("DATE_DELETION", axis=1)
     except KeyError:
@@ -277,6 +281,21 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     Project (approximatively) the cities codes of a dataframe into a desired
     vintage.
 
+    Note that this will **NOT** work:
+      * for cities issued from ultramarine collectivities ("Collectivités
+        territoriales d'Outre-Mer") which are not yet covered by the full INSEE
+        API. Ultramarine cities from ultramarine departements will **NOT** be
+        affected by this glitch, with the notable exception of Saint-Barthelemy
+        and Saint Martin (which used to be in ultramarine departments up to
+        2007 and 2009: projection will not work for year after the accession
+        to the ultramarine collectivity status).
+      * for cities which used to whole, then merged to another and finally
+        reset as a whole city; the algorithm has 50% chances of setting wrong
+        results for any dataset of an initial vintage set during this
+        transition period (this should be rare enough).
+
+    In case of failure, the projected city code will be set to None.
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -333,8 +352,9 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     if estimated_time > 1:
         logger.warning(
             "Due to INSEE's API querying rate, the following process may "
-            f"take up to {round(estimated_time)+1} min "
-            "(estimation without cache processing)..."
+            "take up to %s min "
+            "(estimation without cache processing)...",
+            round(estimated_time) + 1,
         )
     uniques.loc[ix, "PROJECTED"] = uniques.loc[ix, field].progress_apply(
         partial_get_city

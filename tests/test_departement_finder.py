@@ -11,10 +11,16 @@ from french_cities.departement_finder import (
 
 input_df = pd.DataFrame(
     {
-        "code_postal": ["59800", "97200", "20000", "68013"],
-        "code_commune": ["59350", "97209", "2A004", "68066"],
-        "communes": ["Lille", "Fort-de-France", "Ajaccio", "Colmar Cedex"],
-        "deps": ["59", "972", "2A", "68"],
+        "code_postal": ["59800", "97200", "20000", "97133", "68013"],
+        "code_commune": ["59350", "97209", "2A004", "97123", "68066"],
+        "communes": [
+            "Lille",
+            "Fort-de-France",
+            "Ajaccio",
+            "Saint-Barthélemy",
+            "Colmar Cedex",
+        ],
+        "deps": ["59", "972", "2A", "977", "68"],
     }
 )
 
@@ -40,18 +46,13 @@ class MockedHexasmalResponse:
         b"59350;LILLE;59800;LILLE;\r\n"
         b"97209;FORT DE FRANCE;97200;FORT DE FRANCE;\r\n"
         b"2A004;AJACCIO;20000;AJACCIO;\r\n"
+        b"97701;ST BARTHELEMY;97133;ST BARTHELEMY;\r\n"
     )
 
 
 class MockedResponse:
     ok = True
-    content = (
-        b"code_postal,result_context\r\n"
-        b'59800,"59, Nord, Hauts-de-France"\r\n'
-        b'97133,"Fort-de-France, Martinique, France"\r\n'
-        b'20000,"2A, Corse-du-Sud, Corse"\r\n'
-        b"68013,\r\n"
-    )
+    content = b"code_postal,result_context\r\n68013,\r\n"
 
     def json(self):
         return {
