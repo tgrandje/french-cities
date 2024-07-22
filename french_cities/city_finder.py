@@ -1,48 +1,61 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jul  6 11:38:34 2023
+
+Module used to recognize cities.
+
 """
-import diskcache
-import pandas as pd
+from datetime import date, timedelta
 import hashlib
 import io
 import logging
 import os
+import socket
+import time
+from typing import Union
+import warnings
+
+import diskcache
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+from pebble import ThreadPool
+from pynsee.geodata import get_geodata
+from pyproj import Transformer
 from requests_cache import CachedSession
 from requests import Session
 from rapidfuzz import fuzz
 from rapidfuzz.process import cdist
-from unidecode import unidecode
-from pynsee.geodata import get_geodata
-from pynsee.localdata import get_area_list
-import geopandas as gpd
-from pyproj import Transformer
-from datetime import date, timedelta
-from typing import Union
-import numpy as np
-import socket
-import time
 from tqdm import tqdm
-from pebble import ThreadPool
-import warnings
+from unidecode import unidecode
 
 try:
+    # Optional dependencies
     from geopy.extra.rate_limiter import RateLimiter
     from geopy.geocoders import Nominatim
 except ModuleNotFoundError:
     pass
 
-
 from french_cities import DIR_CACHE
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
 from french_cities.utils import init_pynsee, patch_the_patch
+from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_machine_user_agent():
+def get_machine_user_agent() -> str:
+    """
+    Get a fixed User Agent for a given machine. Used to fullfill Nominatim's
+    usage policy.
+
+    Returns
+    -------
+    str
+        User-Agent string
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
     ip = s.getsockname()[0]
@@ -81,7 +94,7 @@ def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
 
     init_pynsee()
 
-    cities = get_area_list("communes", date="*")
+    cities = get_cities_and_ultramarines(date="*")
     cities["TITLE_SHORT"] = (
         cities["TITLE_SHORT"]
         .str.upper()
@@ -666,6 +679,9 @@ def _find_with_nominatim_geolocation(
 
     tqdm.pandas(desc="Querying Nominatim", leave=False)
     results = look_for["query"].progress_apply(func)
+    
+    cache_nominatim.close()
+    
     look_for = look_for.assign(results=results)
     ix = look_for[look_for.results.notnull()].index
     for f in ["latitude", "longitude"]:
@@ -725,7 +741,7 @@ def _find_from_fuzzymatch_cities_names(
     """
     init_pynsee()
 
-    df = get_area_list("communes", date="*")
+    df = get_cities_and_ultramarines(date="*")
     df["TITLE_SHORT"] = (
         df["TITLE_SHORT"]
         .str.upper()

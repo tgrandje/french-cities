@@ -1,25 +1,31 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jul  6 11:38:34 2023
+
+Module used to recognize departments, either from names, cities' official codes
+or cities' postcodes.
 """
-import diskcache
-import os
-import pandas as pd
+
+from datetime import timedelta
 import io
+import logging
+import os
+import time
+
+import diskcache
+import pandas as pd
+from pebble import ThreadPool
+from rapidfuzz import fuzz, process
 from requests_cache import CachedSession
 from requests import Session
-from datetime import timedelta
-import logging
-import numpy as np
-import time
 from tqdm import tqdm
-from pebble import ThreadPool
-from pynsee.localdata import get_area_list
-from rapidfuzz import fuzz, process
 from unidecode import unidecode
 
 from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee, patch_the_patch
+from french_cities.ultramarine_pseudo_cog import (
+    get_departements_and_ultramarines,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -132,7 +138,7 @@ def _process_departements_from_postal(
             )
 
         if not r.ok:
-            raise Exception(
+            raise ValueError(
                 f"Failed to query BAN's API with {files=} - response was {r}"
             )
         result = pd.read_csv(io.BytesIO(r.content), dtype=str)
@@ -165,7 +171,8 @@ def _process_departements_from_postal(
         while True:
             r = session.get(
                 # recherche "en masse" grâce à l'API de la BAN
-                "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/correspondance-code-cedex-code-insee/records",
+                "https://public.opendatasoft.com/api/explore/v2.1/catalog/"
+                "datasets/correspondance-code-cedex-code-insee/records",
                 params={
                     "select": "insee,libelle,nom_com",
                     "where": f"code={x}",
@@ -178,11 +185,11 @@ def _process_departements_from_postal(
             )
             if r.ok:
                 break
-            elif r.status_code == 429:
+            if r.status_code == 429:
                 time.sleep(1)
             else:
                 logger.warning(
-                    f"Error occured on code {x} on OpenDataSoft's API"
+                    "Error occured on code %s on OpenDataSoft's API", x
                 )
                 return None
         results = r.json()["results"]
@@ -278,6 +285,8 @@ def _process_departements_from_postal(
         cache_departments[key] = val
 
     df = df.drop("#CachedResult#", axis=1)
+
+    cache_departments.close()
     return df
 
 
@@ -291,6 +300,10 @@ def _process_departements_from_insee_code(
     """
     Compute departement's codes from official french cities codes (COG INSEE).
     Adds the result as a new column to dataframe under the label 'alias'.
+
+    Note that only valid codes will be kept, but that the computation will be
+    performed with the first characters of the city code, for performance's
+    sake.
 
     Parameters
     ----------
@@ -313,7 +326,7 @@ def _process_departements_from_insee_code(
 
     """
     init_pynsee()
-    deps = get_area_list("departements", date="*").rename(
+    deps = get_departements_and_ultramarines(date="*").rename(
         {"CODE": "#DEP_CODE#"}, axis=1
     )
     deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
@@ -413,7 +426,7 @@ def find_departements_from_names(
     """
 
     init_pynsee()
-    candidates = get_area_list("departements")
+    candidates = get_departements_and_ultramarines()
     candidates = candidates[["CODE", "TITLE"]]
     candidates["TITLE"] = (
         candidates["TITLE"]

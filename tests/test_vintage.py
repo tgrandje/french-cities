@@ -18,9 +18,7 @@ from french_cities.vintage import (
 # %% _get_cities_year_full
 class test_get_cities_year_full(TestCase):
     def setUp(self):
-        self.cities = _get_cities_year_full(
-            2023, look_for=["02077", "02564"]
-        )
+        self.cities = _get_cities_year_full(2023, look_for=["02077", "02564"])
 
     def test_class(self):
         assert isinstance(self.cities, pd.DataFrame)
@@ -47,7 +45,7 @@ class test_get_cities_year(TestCase):
         assert isinstance(self.cities, pd.DataFrame)
 
     def test_shape(self):
-        assert self.cities.shape == (34945, 1)
+        assert self.cities.shape == (35038, 1)
 
     def test_columns(self):
         assert self.cities.columns == ["CODE"]
@@ -62,9 +60,7 @@ arr_selected = _get_subareas_year(
     "arrondissementsMunicipaux", 2023, look_for=["75101"]
 )
 delegated = _get_subareas_year("communesDeleguees", 2023, look_for={"01039"})
-associated = _get_subareas_year(
-    "communesAssociees", 2023, look_for={"59298"}
-)
+associated = _get_subareas_year("communesAssociees", 2023, look_for={"59298"})
 empty = _get_subareas_year("communesAssociees", 2023, look_for={"59350"})
 
 
@@ -117,9 +113,7 @@ class test_set_vintage(TestCase):
         assert input_set_vintage.shape == ouptut_set_vintage.shape
 
     def test_columns(self):
-        assert (
-            input_set_vintage.columns == ouptut_set_vintage.columns
-        ).all()
+        assert (input_set_vintage.columns == ouptut_set_vintage.columns).all()
 
     def test_indexes(self):
         assert (input_set_vintage.index == ouptut_set_vintage.index).all()
