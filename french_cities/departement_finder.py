@@ -6,7 +6,7 @@ Module used to recognize departments, either from names, cities' official codes
 or cities' postcodes.
 """
 
-from datetime import timedelta
+from datetime import timedelta, date
 import io
 import logging
 import os
@@ -26,6 +26,7 @@ from french_cities.utils import init_pynsee, patch_the_patch
 from french_cities.ultramarine_pseudo_cog import (
     get_departements_and_ultramarines,
 )
+from french_cities.vintage import set_vintage
 
 
 logger = logging.getLogger(__name__)
@@ -303,7 +304,7 @@ def _process_departements_from_insee_code(
 
     Note that only valid codes will be kept, but that the computation will be
     performed with the first characters of the city code, for performance's
-    sake.
+    sake (after trying to set the dataset's vintage to the current year)
 
     Parameters
     ----------
@@ -331,6 +332,11 @@ def _process_departements_from_insee_code(
     )
     deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
 
+    # Project into last vintage (to prevent mistakes for cities having change
+    # of department)
+    df["#CODE_INIT#"] = df[source].copy()
+    df = set_vintage(df, date.today().year, source)
+
     df[alias] = df[source].str[:2]
 
     ix = df[df[alias] == "97"].index
@@ -339,6 +345,9 @@ def _process_departements_from_insee_code(
     # Remove unvalid results (ultramarine collectivity, monaco, ...)
     df = df.merge(deps, left_on=alias, right_on="#DEP_CODE#", how="left")
     df = df.drop(alias, axis=1).rename({"#DEP_CODE#": alias}, axis=1)
+
+    df = df.rename({"#CODE_INIT#": source}, axis=1)
+
     return df
 
 

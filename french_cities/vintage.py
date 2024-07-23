@@ -6,6 +6,7 @@ Module used to project a dataset into a known vintage, wether the original
 vintage is known or not.
 """
 
+from datetime import date, datetime
 import os
 from functools import partial
 import logging
@@ -25,6 +26,105 @@ logger = logging.getLogger(__name__)
 
 
 cache_projection = diskcache.Cache(os.path.join(DIR_CACHE, "projection"))
+
+FIXED_ULTRAMARINE_CODES = {
+    # Saint-Pierre-et-Miquelon
+    "97501": "97501",
+    "97502": "97502",
+    # Terres australes et antarctiques françaises
+    "98411": "98411",
+    "98412": "98412",
+    "98413": "98413",
+    "98414": "98414",
+    "98415": "98415",
+    # Wallis-et-Futuna
+    "98611": "98611",
+    "98612": "98612",
+    "98613": "98613",
+    # Polynésie française
+    "98711": "98711",
+    "98712": "98712",
+    "98713": "98713",
+    "98714": "98714",
+    "98715": "98715",
+    "98716": "98716",
+    "98717": "98717",
+    "98718": "98718",
+    "98719": "98719",
+    "98720": "98720",
+    "98721": "98721",
+    "98722": "98722",
+    "98723": "98723",
+    "98724": "98724",
+    "98725": "98725",
+    "98726": "98726",
+    "98727": "98727",
+    "98728": "98728",
+    "98729": "98729",
+    "98730": "98730",
+    "98731": "98731",
+    "98732": "98732",
+    "98733": "98733",
+    "98734": "98734",
+    "98735": "98735",
+    "98736": "98736",
+    "98737": "98737",
+    "98738": "98738",
+    "98739": "98739",
+    "98740": "98740",
+    "98741": "98741",
+    "98742": "98742",
+    "98743": "98743",
+    "98744": "98744",
+    "98745": "98745",
+    "98746": "98746",
+    "98747": "98747",
+    "98748": "98748",
+    "98749": "98749",
+    "98750": "98750",
+    "98751": "98751",
+    "98752": "98752",
+    "98753": "98753",
+    "98754": "98754",
+    "98755": "98755",
+    "98756": "98756",
+    "98757": "98757",
+    "98758": "98758",
+    # Nouvelle-Calédonie
+    "98801": "98801",
+    "98802": "98802",
+    "98803": "98803",
+    "98804": "98804",
+    "98805": "98805",
+    "98806": "98806",
+    "98807": "98807",
+    "98808": "98808",
+    "98809": "98809",
+    "98810": "98810",
+    "98811": "98811",
+    "98812": "98812",
+    "98813": "98813",
+    "98814": "98814",
+    "98815": "98815",
+    "98816": "98816",
+    "98817": "98817",
+    "98818": "98818",
+    "98819": "98819",
+    "98820": "98820",
+    "98821": "98821",
+    "98822": "98822",
+    "98823": "98823",
+    "98824": "98824",
+    "98825": "98825",
+    "98826": "98826",
+    "98827": "98827",
+    "98828": "98828",
+    "98829": "98829",
+    "98830": "98830",
+    "98831": "98831",
+    "98832": "98832",
+    "98833": "98833",
+}
 
 
 @cache_projection.memoize(tag="city_projection")
@@ -49,7 +149,13 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
         Valid insee code (5 digits)
 
     """
+    try:
+        return ultra_marine_territories_vintage(x, projection_date)
+    except KeyError:
+        pass
+
     for date_init in starting_dates:
+
         # Hack to deactivate standard error log entries by pynsee which are
         # concieved with a valid date in mind.
         previous_level = logging.root.manager.disable
@@ -149,8 +255,7 @@ def _get_cities_year(year: int) -> pd.DataFrame:
     4  01006
 
     """
-    date = f"{year}-01-01"
-    cog = get_cities_and_ultramarines(date=date)
+    cog = get_cities_and_ultramarines(date=f"{year}-01-01")
     try:
         cog = cog.drop("DATE_DELETION", axis=1)
     except KeyError:
@@ -200,9 +305,10 @@ def _get_parents_from_serie(
        4  13205  13055
 
     """
-    date = f"{year}-01-01"
     parents = []
-    func = partial(get_ascending_area, area=type_, date=date, type="commune")
+    func = partial(
+        get_ascending_area, area=type_, date=f"{year}-01-01", type="commune"
+    )
     for code in tqdm(codes, desc="get parent from insee", leave=False):
         parents.append(
             {"CODE": code, "PARENT": func(code=code).loc[0, "code"]}
@@ -243,8 +349,7 @@ def _get_subareas_year(
     4  13205  13055
 
     """
-    date = f"{year}-01-01"
-    subareas = get_area_list(area=type_, date=date)
+    subareas = get_area_list(area=type_, date=f"{year}-01-01")
     try:
         subareas = subareas.drop("DATE_DELETION", axis=1)
     except KeyError:
@@ -276,23 +381,75 @@ def _get_subareas_year(
     return subareas
 
 
+def ultra_marine_territories_vintage(code: str, projection_date: str) -> str:
+    """
+    Make do for INSEE's API lack of coverage of ultramarine collectivities'
+    cities vintage projection.
+
+    https://www.insee.fr/fr/information/7929495
+
+    Parameters
+    ----------
+    code : str
+        Cities' initial code to project.
+    projection_date : str
+        Date to project the obsolete code into. Should be in the "YYYY-MM-DD"
+        format.
+
+    Raises
+    ------
+    KeyError
+        If code is not a city code from an ultramarine collectivity.
+
+    Returns
+    -------
+    str
+        Projected code.
+
+    """
+
+    # Codes of cities/districts/circonscriptions unchanging through time:
+
+    try:
+        return FIXED_ULTRAMARINE_CODES[code]
+    except KeyError:
+        pass
+    projection_date = datetime.strptime(projection_date, "%Y-%m-%d").date()
+
+    if code in ("97123", "97701"):
+        # Saint-Barthélemy
+        if projection_date >= date(2008, 1, 1):
+            ret = "97701"
+        ret = "97123"
+
+    if code in ("97127" "97801"):
+        # Saint-Martin
+        if projection_date >= date(2008, 1, 1):
+            ret = "97801"
+        ret = "97127"
+
+    if code in ("98799" "98901"):
+        # La Passion-Clipperton
+        if projection_date >= date(2008, 1, 1):
+            ret = "98901"
+        ret = "98799"
+
+    try:
+        return ret
+    except (UnboundLocalError, NameError) as exc:
+        raise KeyError("Not a city from ultramarine collectivities") from exc
+
+
 def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     """
     Project (approximatively) the cities codes of a dataframe into a desired
     vintage.
 
-    Note that this will **NOT** work:
-      * for cities issued from ultramarine collectivities ("Collectivités
-        territoriales d'Outre-Mer") which are not yet covered by the full INSEE
-        API. Ultramarine cities from ultramarine departements will **NOT** be
-        affected by this glitch, with the notable exception of Saint-Barthelemy
-        and Saint Martin (which used to be in ultramarine departments up to
-        2007 and 2009: projection will not work for year after the accession
-        to the ultramarine collectivity status).
-      * for cities which used to whole, then merged to another and finally
-        reset as a whole city; the algorithm has 50% chances of setting wrong
-        results for any dataset of an initial vintage set during this
-        transition period (this should be rare enough).
+    Note that this may **NOT** work for cities which used to whole, then
+    merged to another and finally reset as a whole city;
+    the algorithm has 50% chances of setting wrong results for any dataset of
+    an initial vintage set during this transition period (this should be rare
+    enough).
 
     In case of failure, the projected city code will be set to None.
 
@@ -333,7 +490,6 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
 
     # Obsolete cities : look for existing projections from old starting dates,
     # using INSEE API
-    date = f"{year}-01-01"
     starting_dates = [
         "1943-01-01",
         "1960-01-01",
@@ -343,7 +499,9 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     ]
 
     partial_get_city = partial(
-        get_city, starting_dates=starting_dates, projection_date=date
+        get_city,
+        starting_dates=starting_dates,
+        projection_date=f"{year}-01-01",
     )
 
     ix = uniques[uniques.PROJECTED.isnull()].index
