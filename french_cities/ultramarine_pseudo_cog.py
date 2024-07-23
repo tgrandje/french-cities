@@ -7,12 +7,15 @@ This allows to recognized ultramarine territories.
 """
 import datetime
 import logging
+import os
 
+import diskcache
 import pandas as pd
 from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
+from french_cities import DIR_CACHE
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,12 @@ def _get_ultramarines_cities(
         date = datetime.date(datetime.date.today().year, 1, 1)
         date = date.strftime("%Y-%m-%d")
 
+    cache_ultramarine = diskcache.Cache(os.path.join(DIR_CACHE, "ultramarine"))
+    try:
+        cities = cache_ultramarine[date]
+        return cities
+    except KeyError:
+        pass
     desc = "Get descending area for ultra-marine territories"
     cities = []
     for code in tqdm(um["CODE"], total=len(um), desc=desc, leave=False):
@@ -91,6 +100,9 @@ def _get_ultramarines_cities(
         },
         axis=1,
     )
+
+    cache_ultramarine[date] = cities
+
     return cities
 
 
