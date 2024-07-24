@@ -409,7 +409,6 @@ def ultra_marine_territories_vintage(code: str, projection_date: str) -> str:
     """
 
     # Codes of cities/districts/circonscriptions unchanging through time:
-
     try:
         return FIXED_ULTRAMARINE_CODES[code]
     except KeyError:
@@ -420,19 +419,22 @@ def ultra_marine_territories_vintage(code: str, projection_date: str) -> str:
         # Saint-Barthélemy
         if projection_date >= date(2008, 1, 1):
             ret = "97701"
-        ret = "97123"
+        else:
+            ret = "97123"
 
     if code in ("97127" "97801"):
         # Saint-Martin
         if projection_date >= date(2008, 1, 1):
             ret = "97801"
-        ret = "97127"
+        else:
+            ret = "97127"
 
     if code in ("98799" "98901"):
         # La Passion-Clipperton
         if projection_date >= date(2008, 1, 1):
             ret = "98901"
-        ret = "98799"
+        else:
+            ret = "98799"
 
     try:
         return ret
