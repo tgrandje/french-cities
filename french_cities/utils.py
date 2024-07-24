@@ -16,7 +16,7 @@ def clear_all_cache():
     "Clear french-cities cache first, then pynsee's"
 
     # Clear diskcache's caches
-    for cache_name in "projection", "deps", "nominatim":
+    for cache_name in "projection", "deps", "nominatim", "ultramarine":
         with diskcache.Cache(os.path.join(DIR_CACHE, cache_name)) as cache:
             cache.clear()
 

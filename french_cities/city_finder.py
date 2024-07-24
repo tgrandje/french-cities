@@ -679,9 +679,9 @@ def _find_with_nominatim_geolocation(
 
     tqdm.pandas(desc="Querying Nominatim", leave=False)
     results = look_for["query"].progress_apply(func)
-    
+
     cache_nominatim.close()
-    
+
     look_for = look_for.assign(results=results)
     ix = look_for[look_for.results.notnull()].index
     for f in ["latitude", "longitude"]:
@@ -752,7 +752,9 @@ def _find_from_fuzzymatch_cities_names(
     )
     df = df.loc[:, ["TITLE_SHORT", "CODE"]]
 
-    df = find_departements(df, source="CODE", alias="dep", type_code="insee")
+    df = find_departements(
+        df, source="CODE", alias="dep", type_code="insee", do_set_vintage=False
+    )
     df = df.drop_duplicates(["TITLE_SHORT", "dep"])
     df = df.reset_index(drop=False)
 

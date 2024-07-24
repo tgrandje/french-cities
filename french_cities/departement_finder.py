@@ -6,7 +6,7 @@ Module used to recognize departments, either from names, cities' official codes
 or cities' postcodes.
 """
 
-from datetime import timedelta
+from datetime import timedelta, date
 import io
 import logging
 import os
@@ -26,6 +26,7 @@ from french_cities.utils import init_pynsee, patch_the_patch
 from french_cities.ultramarine_pseudo_cog import (
     get_departements_and_ultramarines,
 )
+from french_cities.vintage import set_vintage
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ def _process_departements_from_postal(
     alias: str,
     session: Session = None,
     authorize_duplicates: bool = False,
+    do_set_vintage: bool = True,
 ) -> pd.DataFrame:
     """
     Retrieve departement's code from postoffice code. Adds the result as a new
@@ -60,6 +62,9 @@ def _process_departements_from_postal(
         acceptable for a given postcode (for instance, 13780 can result to
         either 13 or 83). If False, duplicates will be removed, hence no
         result will be available. False by default.
+    do_set_vintage : bool, option:
+        **ignored argument, set only for coherence with
+        _process_departements_from_insee_code**
 
     Returns
     -------
@@ -92,7 +97,7 @@ def _process_departements_from_postal(
     )
     base = base[["#Code_commune_INSEE", "Code_postal"]]
     base = _process_departements_from_insee_code(
-        base, "#Code_commune_INSEE", alias
+        base, "#Code_commune_INSEE", alias, do_set_vintage=False
     )
     base = base[["Code_postal", alias]].rename({"Code_postal": source}, axis=1)
     base = base.drop_duplicates(keep="first")
@@ -296,6 +301,7 @@ def _process_departements_from_insee_code(
     alias: str,
     session: Session = None,
     authorize_duplicates: bool = False,
+    do_set_vintage: bool = True,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from official french cities codes (COG INSEE).
@@ -303,7 +309,7 @@ def _process_departements_from_insee_code(
 
     Note that only valid codes will be kept, but that the computation will be
     performed with the first characters of the city code, for performance's
-    sake.
+    sake (after trying to set the dataset's vintage to the current year)
 
     Parameters
     ----------
@@ -319,6 +325,13 @@ def _process_departements_from_insee_code(
     authorize_duplicates : bool, optional
         **ignored argument, set only for coherence with
         _process_departements_from_postal**
+    do_set_vintage : bool, optional
+        If True, set a vintage projection for df. If False, don't bother (will
+        be faster). Should be False when df was already computed from a given
+        function out of pynsee or french-cities. Should be True when used on
+        almost any other dataset.
+        The default is True.
+
     Returns
     -------
     df : pd.DataFrame
@@ -331,6 +344,12 @@ def _process_departements_from_insee_code(
     )
     deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
 
+    if do_set_vintage:
+        # Project into last vintage (to prevent mistakes for cities having
+        # change of department)
+        df["#CODE_INIT#"] = df[source].copy()
+        df = set_vintage(df, date.today().year, source)
+
     df[alias] = df[source].str[:2]
 
     ix = df[df[alias] == "97"].index
@@ -339,6 +358,11 @@ def _process_departements_from_insee_code(
     # Remove unvalid results (ultramarine collectivity, monaco, ...)
     df = df.merge(deps, left_on=alias, right_on="#DEP_CODE#", how="left")
     df = df.drop(alias, axis=1).rename({"#DEP_CODE#": alias}, axis=1)
+
+    if do_set_vintage:
+        df = df.drop(source, axis=1)
+        df = df.rename({"#CODE_INIT#": source}, axis=1)
+
     return df
 
 
@@ -349,6 +373,7 @@ def find_departements(
     type_code: str,
     session: Session = None,
     authorize_duplicates: bool = False,
+    do_set_vintage: bool = True,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from postal or official codes (ie. INSEE COG)'
@@ -373,6 +398,12 @@ def find_departements(
         acceptable for a given postcode (for instance, 13780 can result to
         either 13 or 83 ). If False, duplicates will be removed, hence no
         result will be available. False by default.
+    do_set_vintage : bool, optional
+        If True, set a vintage projection for df. If False, don't bother (will
+        be faster). Should be False when df was already computed from a given
+        function out of pynsee or french-cities. Should be True when used on
+        almost any other dataset.
+        The default is True.
 
     Raises
     ------
@@ -399,7 +430,9 @@ def find_departements(
         func = _process_departements_from_postal
     elif type_code == "insee":
         func = _process_departements_from_insee_code
-    return func(df, source, alias, session, authorize_duplicates)
+    return func(
+        df, source, alias, session, authorize_duplicates, do_set_vintage
+    )
 
 
 def find_departements_from_names(

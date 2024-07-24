@@ -209,6 +209,7 @@ output_df = find_city(
 
 
 class test_find_city(TestCase):
+
     def test_class(self):
         assert isinstance(output_df, pd.DataFrame)
 
