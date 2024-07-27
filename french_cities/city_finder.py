@@ -297,6 +297,10 @@ def find_city(
             allowable_methods=("GET", "POST"),
             expire_after=timedelta(days=30),
         )
+        proxies = {}
+        proxies["http"] = os.environ.get("http_proxy", None)
+        proxies["https"] = os.environ.get("https_proxy", None)
+        session.proxies.update(proxies)
 
     if len(necessary3 - columns) == 0 and not epsg:
         logger.warning(

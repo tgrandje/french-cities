@@ -81,6 +81,10 @@ def _process_departements_from_postal(
             allowable_methods=("GET", "POST"),
             expire_after=timedelta(days=30),
         )
+        proxies = {}
+        proxies["http"] = os.environ.get("http_proxy", None)
+        proxies["https"] = os.environ.get("https_proxy", None)
+        session.proxies.update(proxies)
 
     df["#CachedResult#"] = df[source].apply(cache_departments.get)
 
