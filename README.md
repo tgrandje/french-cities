@@ -83,8 +83,8 @@ df = pd.DataFrame(
         "deps": ["59", "977", "2A"],
     }
 )
-df = find_departements(df, source="code_postal", alias="dep_A", type_code="postcode")
-df = find_departements(df, source="code_commune", alias="dep_B", type_code="insee")
+df = find_departements(df, source="code_postal", alias="dep_A", type_field="postcode")
+df = find_departements(df, source="code_commune", alias="dep_B", type_field="insee")
 
 print(df)
 ```
