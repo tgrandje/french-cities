@@ -1,20 +1,32 @@
 # french-cities
-Toolbox on french cities: set vintage, find departments, find cities...
+This repo contains the documentation of the python french-cities package, a 
+package aimed at improving the referencing of municipalities in French 🇫🇷 
+datasets.
 
 # Documentation
 
-A full documentation with usecases is available at [https://tgrandje.github.io/french-cities/](https://tgrandje.github.io/french-cities/).
+A full documentation with usecases is available at
+[https://tgrandje.github.io/french-cities/](https://tgrandje.github.io/french-cities/).
 Obviously, it is only available in french as yet.
 Any help is welcome to build a multi-lingual documentation website.
 
 Until then, a basic english documentation will stay available in the present README. 
 
+# Why french-cities?
+
+Do you have any data:
+* which municipal locations are provided through approximate addresses, or via geographical 🗺️ coordinates?
+* which municipalities are referenced by their postal codes and their labels 😮?
+* which departments are written in full text 🔡?
+* which spelling are dubious (for instance, torturing the _<del>Loire</del> Loir-et-Cher_) or obsolete 
+(for instance, referencing _Templeuve_, a city renamed as _Templeuve-en-Pévèle_ since 2015)? 
+* or compiled over the years and where cities' codes are a patchwork of multiple 🤯 vintages?
+
+**Then 'french-cities' is for you 🫵!**
+
 # Installation
 
-`pip install french-cities[full]`
-
-Note that the "full" installation will also install geopy, which might use
-Nominatim API for city recognition as a last resort.
+`pip install french-cities`
 
 # Configuration
 
@@ -40,17 +52,6 @@ functions, even if you had to configure the corporate proxy through environment
 variables for `pynsee` and `geopy`.
 
 ## Basic usage
-
-### Why french-cities?
-There are already available packages and APIs meant to be used for basic french
-cities management. For instance, `pynsee` uses the INSEE's API to retrieve
-multiple data (including departement, region, ...). `geopy` can also retrieve
-cities from their names using the BAN (Base Adresse Nationale) API or the 
-Nominatim geocoding service.
-
-The difference is that `french-cities` is primarly meant to perform against whole
-pandas series/dataframes. It should handle better performance than multiple API 
-calls and will optimize the call to each endpoints.
 
 ### Retrieve departements' codes
 `french-cities` can retrieve departement's codes from postal codes or official
@@ -256,4 +257,4 @@ Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Dur
 GPL-3.0-or-later
 
 ## Project Status
-In production.
+Stable.
