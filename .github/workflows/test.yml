@@ -45,7 +45,7 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --without dev --extras "full"
+        run: poetry install --no-interaction --without dev 
         
       #----------------------------------------------
       # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
