@@ -254,12 +254,14 @@ def _process_departements_from_postal(
 
     if not postal_codes_missing.empty:
         # Still no results -> assume we can use the first characters of
-        # postcode anyway
+        # postcode anyway (and set do_set_vintage to False, as this may be
+        # entirely wrong codes, but the first digits may at least be ok)
         last_resort_results = _process_departements_from_insee_code(
             postal_codes_missing,
             source=source,
             alias="dep",
             session=session,
+            do_set_vintage=False,
         )
         last_resort_results = last_resort_results.dropna()
     else:
@@ -366,77 +368,13 @@ def _process_departements_from_insee_code(
     return df
 
 
-def find_departements(
+def _find_departements_from_names(
     df: pd.DataFrame,
     source: str,
     alias: str,
-    type_code: str,
     session: Session = None,
     authorize_duplicates: bool = False,
     do_set_vintage: bool = True,
-) -> pd.DataFrame:
-    """
-    Compute departement's codes from postal or official codes (ie. INSEE COG)'
-    Adds the result as a new column to dataframe under the label 'alias'.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        DataFrame containing official cities codes
-    source : str
-        Field containing the post or official codes
-    alias : str
-        Column to store the departements' codes unto
-    type_code : str
-        Type of codes passed under `alias` label. Should be either 'insee' for
-        official codes or 'postcode' for postal codes.
-    session : Session, optional
-        Web session. The default is None (and will use a CachedSession with
-        30 days expiration)
-    authorize_duplicates : bool, optional
-        If True, authorize duplication of results when multiple results are
-        acceptable for a given postcode (for instance, 13780 can result to
-        either 13 or 83 ). If False, duplicates will be removed, hence no
-        result will be available. False by default.
-    do_set_vintage : bool, optional
-        If True, set a vintage projection for df. If False, don't bother (will
-        be faster). Should be False when df was already computed from a given
-        function out of pynsee or french-cities. Should be True when used on
-        almost any other dataset.
-        The default is True.
-
-    Raises
-    ------
-    ValueError
-        If type_code not among "postcode", "insee".
-
-    Returns
-    -------
-    df : pd.DataFrame
-        Updated DataFrame with departement's codes
-
-    """
-    if type_code not in {"postcode", "insee"}:
-        msg = (
-            "type_code must be among ('postcode', 'insee') - "
-            f"found {type_code} instead"
-        )
-        raise ValueError(msg)
-
-    init_pynsee()
-
-    df = df.copy()
-    if type_code == "postcode":
-        func = _process_departements_from_postal
-    elif type_code == "insee":
-        func = _process_departements_from_insee_code
-    return func(
-        df, source, alias, session, authorize_duplicates, do_set_vintage
-    )
-
-
-def find_departements_from_names(
-    df: pd.DataFrame, label: str, alias: str = "DEP_CODE"
 ) -> pd.DataFrame:
     """
     Retrieve departement's codes from their names.
@@ -445,11 +383,20 @@ def find_departements_from_names(
     ----------
     df : pd.DataFrame
         DataFrame containing official departement's names
-    label : str
+    source : str
         Field containing the label of the departements
     alias : str, optional
         Column to store the departements' codes unto.
         Default is "DEP_CODE"
+    session : Session, optional
+        **ignored argument, set only for coherence with
+        _process_departements_from_postal**
+    autorize_duplicates : bool, optional
+        **ignored argument, set only for coherence with
+        _process_departements_from_postal**
+    do_set_vintage : bool, optional
+        **ignored argument, set only for coherence with
+        _process_departements_from_insee_code**
 
     Returns
     -------
@@ -459,8 +406,8 @@ def find_departements_from_names(
     """
 
     init_pynsee()
-    candidates = get_departements_and_ultramarines()
-    candidates = candidates[["CODE", "TITLE"]]
+    candidates = get_departements_and_ultramarines("*")
+    candidates = candidates[["CODE", "TITLE"]].drop_duplicates()
     candidates["TITLE"] = (
         candidates["TITLE"]
         .apply(unidecode)
@@ -472,7 +419,7 @@ def find_departements_from_names(
 
     df = df.copy()
     df["FORMATTED"] = (
-        df[label]
+        df[source]
         .apply(unidecode)
         .str.upper()
         .str.replace(r"\W+", " ", regex=True)
@@ -494,3 +441,76 @@ def find_departements_from_names(
     df = df.drop("FORMATTED", axis=1)
 
     return df
+
+
+def find_departements(
+    df: pd.DataFrame,
+    source: str,
+    alias: str,
+    type_field: str,
+    session: Session = None,
+    authorize_duplicates: bool = False,
+    do_set_vintage: bool = True,
+) -> pd.DataFrame:
+    """
+    Compute departement's codes from postal, official codes (ie. INSEE COG)
+    or labels in full text.
+    Adds the result as a new column to dataframe under the label 'alias'.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing official cities codes
+    source : str
+        Field containing the post codes, official codes or labels
+    alias : str
+        Column to store the departements' codes unto
+    type_field : str
+        Type of codes passed under `alias` label. Should be either 'insee' for
+        official codes, 'postcode' for postal codes or 'label' for labels.
+    session : Session, optional
+        Web session. The default is None (and will use a CachedSession with
+        30 days expiration)
+    authorize_duplicates : bool, optional
+        If True, authorize duplication of results when multiple results are
+        acceptable for a given postcode (for instance, 13780 can result to
+        either 13 or 83 ). If False, duplicates will be removed, hence no
+        result will be available. False by default.
+    do_set_vintage : bool, optional
+        If True, set a vintage projection for df. If False, don't bother (will
+        be faster). Should be False when df was already computed from a given
+        function out of pynsee or french-cities. Should be True when used on
+        almost any other dataset.
+        The default is True.
+
+    Raises
+    ------
+    ValueError
+        If type_field not among "postcode", "insee", "labels".
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Updated DataFrame with departement's codes
+
+    """
+
+    if type_field not in {"postcode", "insee", "label"}:
+        msg = (
+            "type_field must be among ('postcode', 'insee', 'label') - "
+            f"found {type_field=} instead"
+        )
+        raise ValueError(msg)
+
+    init_pynsee()
+
+    df = df.copy()
+    if type_field == "postcode":
+        func = _process_departements_from_postal
+    elif type_field == "insee":
+        func = _process_departements_from_insee_code
+    else:
+        func = _find_departements_from_names
+    return func(
+        df, source, alias, session, authorize_duplicates, do_set_vintage
+    )
