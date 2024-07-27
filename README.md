@@ -54,8 +54,8 @@ variables for `pynsee` and `geopy`.
 ## Basic usage
 
 ### Retrieve departements' codes
-`french-cities` can retrieve departement's codes from postal codes or official
-(COG/INSEE) codes. 
+`french-cities` can retrieve departement's codes from postal codes, official
+(COG/INSEE) codes or labels. 
 
 Working from postal codes will make use of the BAN (Base Adresse Nationale)
 and should return correct results. The case of "Cedex" codes is only partially
@@ -65,9 +65,9 @@ This consumes the freemium API and no authentication is included:
 the user of the present package should check the current API's legal terms
 directly on OpenDataSoft's website.
 
-Working from official codes may give wrong results when working on an old
-dataset and with cities which have changed of departments (which is rarely seen). 
-This is deliberate: it will use the first characters of the cities' codes 
+Working from official codes may sometime give empty results (when working on an old
+dataset and with cities which have changed of departments, which is rarely seen). 
+This is deliberate: it will mostly use the first characters of the cities' codes 
 (which is a fast process and 99% accurate) instead of using an API (which is
 lengthy though foolproof).
 
@@ -85,30 +85,12 @@ df = pd.DataFrame(
 )
 df = find_departements(df, source="code_postal", alias="dep_A", type_field="postcode")
 df = find_departements(df, source="code_commune", alias="dep_B", type_field="insee")
+df = find_departements(df, source="communes", alias="dep_C", type_field="label")
 
 print(df)
 ```
 
-One can also work directly from departement's names, using 
-`find_departements_from_names` instead :
-
-```
-from french_cities import find_departements_from_names
-import pandas as pd
-
-df = pd.DataFrame(
-    {
-        "deps": ["Corse sud", "Alpe de Haute-Provence", "Aisne", "Ain"],
-    }
-)
-df = find_departements_from_names(df, label="deps")
-
-print(df)
-```
-
-For a complete documentation on `find_departements` or 
-`find_departements_from_names`, please type `help(find_departements)` or
-`help(find_departements_from_names)`.
+For a complete documentation on `find_departements`, please type `help(find_departements)`.
 
 ### Retrieve cities' codes
 `french-cities` can retrieve cities' codes from multiple fields. It will work
