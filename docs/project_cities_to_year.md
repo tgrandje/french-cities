@@ -6,7 +6,7 @@ handle: /project_cities_to_year
 nav_order: 6
 
 ---
-# Projection de codes communes dans un millésime donné
+# Projection de codes communes dans un millésime donné : `set_vintage`
 
 `french-cities` peut tenter de "projeter" un dataframe dans un millésime donné,
 la date initiale demeurant inconnue (voire inexistante, les cas de fichiers
