@@ -157,7 +157,7 @@ def get_departements_and_ultramarines(date=None, update=None):
     ultramarine = get_area_list("collectivitesDOutreMer", date, update)
     ultramarine = ultramarine.sort_values(["CODE", "DATE_CREATION"])
 
-    cities = get_area_list("departements", date, update)
-    cities = cities.drop("chefLieu", axis=1)
-    full = pd.concat([ultramarine, cities], ignore_index=True)
+    deps = get_area_list("departements", date, update)
+    deps = deps.drop("chefLieu", axis=1)
+    full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
