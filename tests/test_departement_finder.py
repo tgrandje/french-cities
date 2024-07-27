@@ -4,10 +4,7 @@ from unittest import TestCase
 import pandas as pd
 
 
-from french_cities.departement_finder import (
-    find_departements,
-    find_departements_from_names,
-)
+from french_cities.departement_finder import find_departements
 
 input_df = pd.DataFrame(
     {
@@ -100,8 +97,5 @@ class test_find_departements(TestCase):
         assert (test["dep_test"] == test["deps"]).all()
 
     def test_from_name(self):
-        test = find_departements_from_names(
-            input_df2,
-            "deps",
-        )
+        test = find_departements(input_df2, "deps", "DEP_CODE", "label")
         assert (test["DEP_CODE"] == test["codes"]).all()
