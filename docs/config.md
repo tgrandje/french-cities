@@ -11,27 +11,41 @@ nav_order: 3
 ## Ajout des clefs API INSEE
 
 `french-cities` utilise `pynsee`, qui nécessite des cles API INSEE pour être
-fonctionnel. Jusqu'à quatre clefs peuvent être spécifiées à l'aide de variables
-d'environnement :
+fonctionnel. Deux variables d'environnement doivent impérativement être spécifiées :
 
 * insee_key
 * insee_secret
-* http_proxy (le cas échéant, pour accès web derrière un proxy professionnel)
-* https_proxy (le cas échéant, pour accès web derrière un proxy professionnel)
 
 Merci de se référer à 
 [la documentation de `pynsee`](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
 pour plus d'information sur les clefs API et la configuration.
 
-A noter que la configuration des proxy par variable d'environnement sera
-fonctionnelle pour à la fois pynsee et geopy.
+Pour mémoire, il est tout à fait possible de fixer des variables d'environnement
+depuis un environnement python, à l'aide des instructions suivantes :
 
-## Gestion des sessions web
-`pynsee` et `geopy` utilisent leurs propres gestionnaires de session web.
+```python
+import os
+os.environ["insee_key"] = "ma-clef-applicative"
+os.environ["insee_secret"] = "ma-clef-secrete"
+```
+## Configuration des proxies
 
-Ainsi, les objets `Session` passés en argument à french-cities ne seront
-**PAS** partagés avec `pynsee` ou `geopy`.
+Les requêtes web fournies `french-cities` sont de trois types :
+* celles générées par `pynsee`, interrogeant les API INSEE ;
+* celles générées par `geopy`, interrogeant l'API Nominatim ;
+* celles générées en propre par `french-cities` pour interroger l'API de la 
+Base Adresse Nationale et l'API Base officielle des codes postaux.
 
-Cela explique la possibilité de passer une session en argument alors même que
-des proxy professionnels peuvent être spécifiés par variables d'environnement 
-pour `pynsee` et `geopy`).
+Dans le cas où l'on souhaiterait utiliser des proxies professionnels 
+pour connexion internet, il suffit de fixer deux variables d'environnement
+supplémentaires :
+
+* http_proxy
+* https_proxy
+
+Néanmoins, si l'utilisateur souhaite configurer son propre objet session
+et le fournir en argument optionnel à `french-cities`, il lui revient :
+* de fixer par lui-même le(s) proxy(ies) attachés à sa session ;
+* de continuer à fixer les variables d'environnement `https_proxy` et
+`http_proxy` (utilisées en propre par `pynsee` et `geopy` qui utilisent
+leurs propres objets session).
