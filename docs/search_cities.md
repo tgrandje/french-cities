@@ -6,7 +6,7 @@ handle: /search_cities
 nav_order: 5
 
 ---
-# Reconnaissance des communes
+# Reconnaissance des communes : `find_city`
 
 `french-cities` peut retrouver un code commune à partir de champs multiples.
 Il est capable de détecter certaines erreurs simples dans les champs (jusqu'à 
@@ -19,21 +19,113 @@ de priorité) :
 * 'address', 'postcode' et 'city'
 * 'department' et 'city'
 
-Il est à noter que l'algorithme peu faire être source d'erreur dès lors que
+💡 Nota : pour désactiver l'utilisation d'un champ (ou signaler son absence), il
+convient de fournir la valeur `False` aux arguments de la fonction `find_city`.
+
+L'algorithme peut être source d'erreur dès lors que
 la jointure spatiale (coordonnées x & y) sera sollicitée sur un millésime ancien.
 Les communes impactées sont les communes restaurées ("scission"), le flux de données
 spatialisées du COG servi par `pynsee` n'étant pas millésimé à ce jour.
 
-La reconnaissance syntaxique (champs postcode, city, address, departement) est
-basée sur un fuzzy matching en langage python, l'API BAN (base adresse nationale),
-ou l'API Nominatim d'OSM (si activé). 
-L'algorithme ne conservera pas les résultats insuffisamment fiables, mais des 
+Les reconnaissances exécutées à partir des autres champs sont toutes syntaxiques :
+elles utilisent des techniques de fuzzy-matching internes ou externe (BAN par exemple).
+L'algorithme tâchera d'éliminer les résultats insuffisamment fiables, mais des 
 erreurs peuvent bien sûr subsister.
+
+Les étapes de l'algorithme sont les suivantes, par ordre de priorité :
+* reconnaissance par jointure spatiale (coordonnées SIG et code EPSG requis)
+* ajout d'une reconnaissance du département si non fourni initialement (à partir des codes postaux)
+* reconnaissance par fuzzy-matching :
+    * département par département si disponible (pour éviter les homonymes)
+    * sur la France entière sinon
+* si code postal disponible :
+    * géocodage BAN CSV via code postal + nom de commune
+    * géocodage BAN individuel restreint aux communes
+* si adresse et code postal disponibles, géocodage BAN CSV
+* si département disponible :
+    * géocodage BAN CSV via code département + nom de commune
+    * géocodage BAN individuel restreint aux communes
+* si recherche Nominatim activée :
+    * si code postal disponible : géocodage Nominatim individuel (code postal + nom de commune) suivi d'une jointure spatiale
+    * si département disponible : géocodage Nominatim individuel (département + nom de commune)  suivi d'une jointure spatiale
+
+💡 Nota : au vu de l'algorithme, toute erreur de département (éventuellement sur le code postal fourni)
+risque fortement d'entraîner une absence de résultats. Ce comportement est considéré comme normal et ne
+pourra être résorbé que si la commune visée n'a aucun homonyme sur la France.
+
+Exemple d'utilisation :
+```python
+
+from french_cities import find_city
+import pandas as pd
+
+df = pd.DataFrame(
+    [
+        {
+            "x": 2.294694,
+            "y": 48.858093,
+            "location": "Tour Eiffel",
+            "dep": "75",
+            "city": "Paris",
+            "address": "5 Avenue Anatole France",
+            "postcode": "75007",
+            "target": "75056",
+        },
+        {
+            "x": 8.738962,
+            "y": 41.919216,
+            "location": "mairie",
+            "dep": "2A",
+            "city": "Ajaccio",
+            "address": "Antoine Sérafini",
+            "postcode": "20000",
+            "target": "2A004",
+        },
+        {
+            "x": -52.334990,
+            "y": 4.938194,
+            "location": "mairie",
+            "dep": "973",
+            "city": "Cayenne",
+            "address": "1 rue de Rémire",
+            "postcode": "97300",
+            "target": "97302",
+        },
+        {
+            "x": np.nan,
+            "y": np.nan,
+            "location": "Erreur code postal Lille/Lyon",
+            "dep": "59",
+            "city": "Lille",
+            "address": "1 rue Faidherbe",
+            "postcode": "69000",
+            "target": "59350",
+        },
+    ]
+)
+df = find_city(df, epsg=4326)
+
+print(df)
+```
 
 ### Docstring de la fonction `find_city`
 
 ```
-find_city(df: pandas.core.frame.DataFrame, year: str = 'last', x: Union[str, bool] = 'x', y: Union[str, bool] = 'y', dep: Union[str, bool] = 'dep', city: Union[str, bool] = 'city', address: Union[str, bool] = 'address', postcode: Union[str, bool] = 'postcode', field_output: str = 'insee_com', epsg: int = None, session: requests.sessions.Session = None, use_nominatim_backend: bool = False) -> pandas.core.frame.DataFrame
+find_city(
+    df: pandas.DataFrame, 
+    year: str = 'last', 
+    x: Union[str, bool] = 'x', 
+    y: Union[str, bool] = 'y', 
+    dep: Union[str, bool] = 'dep', 
+    city: Union[str, bool] = 'city', 
+    address: Union[str, bool] = 'address', 
+    postcode: Union[str, bool] = 'postcode', 
+    field_output: str = 'insee_com', 
+    epsg: int = None, 
+    session: requests.Session = None, 
+    use_nominatim_backend: bool = False
+) -> pandas.DataFrame:
+
     Find cities in a dataframe using multiple methods (either based on
     valid geolocation or lexical fields).
     
@@ -113,60 +205,4 @@ find_city(df: pandas.core.frame.DataFrame, year: str = 'last', x: Union[str, boo
     pd.DataFrame
         Initial dataframe with a new column containing cities' codes (labelled
         according to `field_output` value.)
-```
-
-### Exemple d'utilisation basique
-
-```python
-
-from french_cities import find_city
-import pandas as pd
-
-df = pd.DataFrame(
-    [
-        {
-            "x": 2.294694,
-            "y": 48.858093,
-            "location": "Tour Eiffel",
-            "dep": "75",
-            "city": "Paris",
-            "address": "5 Avenue Anatole France",
-            "postcode": "75007",
-            "target": "75056",
-        },
-        {
-            "x": 8.738962,
-            "y": 41.919216,
-            "location": "mairie",
-            "dep": "2A",
-            "city": "Ajaccio",
-            "address": "Antoine Sérafini",
-            "postcode": "20000",
-            "target": "2A004",
-        },
-        {
-            "x": -52.334990,
-            "y": 4.938194,
-            "location": "mairie",
-            "dep": "973",
-            "city": "Cayenne",
-            "address": "1 rue de Rémire",
-            "postcode": "97300",
-            "target": "97302",
-        },
-        {
-            "x": np.nan,
-            "y": np.nan,
-            "location": "Erreur code postal Lille/Lyon",
-            "dep": "59",
-            "city": "Lille",
-            "address": "1 rue Faidherbe",
-            "postcode": "69000",
-            "target": "59350",
-        },
-    ]
-)
-df = find_city(df, epsg=4326)
-
-print(df)
 ```

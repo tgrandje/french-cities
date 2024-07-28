@@ -297,6 +297,10 @@ def find_city(
             allowable_methods=("GET", "POST"),
             expire_after=timedelta(days=30),
         )
+        proxies = {}
+        proxies["http"] = os.environ.get("http_proxy", None)
+        proxies["https"] = os.environ.get("https_proxy", None)
+        session.proxies.update(proxies)
 
     if len(necessary3 - columns) == 0 and not epsg:
         logger.warning(
@@ -550,7 +554,7 @@ def find_city(
                 missing,
                 source="insee_com_nominatim",
                 alias="dep_nominatim",
-                type_code="insee",
+                type_field="insee",
             )
             temp = df.loc[ix]
             temp["query"] = temp[use] + " " + temp["city_cleaned"]
@@ -753,7 +757,11 @@ def _find_from_fuzzymatch_cities_names(
     df = df.loc[:, ["TITLE_SHORT", "CODE"]]
 
     df = find_departements(
-        df, source="CODE", alias="dep", type_code="insee", do_set_vintage=False
+        df,
+        source="CODE",
+        alias="dep",
+        type_field="insee",
+        do_set_vintage=False,
     )
     df = df.drop_duplicates(["TITLE_SHORT", "dep"])
     df = df.reset_index(drop=False)
