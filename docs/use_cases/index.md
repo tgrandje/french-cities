@@ -9,5 +9,3 @@ has_children: true
 ---
 
 # Cas d'usages
-
-Page en construction...
