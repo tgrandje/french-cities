@@ -22,7 +22,7 @@ from tqdm import tqdm
 from unidecode import unidecode
 
 from french_cities import DIR_CACHE
-from french_cities.utils import init_pynsee, patch_the_patch
+from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import (
     get_departements_and_ultramarines,
 )
@@ -139,12 +139,11 @@ def _process_departements_from_postal(
             ("result_columns", (None, "result_context")),
         ]
 
-        with patch_the_patch():
-            r = session.post(
-                # recherche grâce à l'API de la BAN
-                "https://api-adresse.data.gouv.fr/search/csv/",
-                files=files,
-            )
+        r = session.post(
+            # recherche grâce à l'API de la BAN
+            "https://api-adresse.data.gouv.fr/search/csv/",
+            files=files,
+        )
 
         if not r.ok:
             raise ValueError(

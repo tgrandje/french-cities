@@ -39,7 +39,7 @@ except ModuleNotFoundError:
 from french_cities import DIR_CACHE
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
-from french_cities.utils import init_pynsee, patch_the_patch
+from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
 
@@ -1014,11 +1014,10 @@ def _query_BAN_csv_geocoder(
         ("result_columns", (None, "result_citycode")),
     ]
 
-    with patch_the_patch():
-        r = session.post(
-            "https://api-adresse.data.gouv.fr/search/csv/",
-            files=files,
-        )
+    r = session.post(
+        "https://api-adresse.data.gouv.fr/search/csv/",
+        files=files,
+    )
     if not r.ok:
         raise Exception(
             f"Failed to query BAN's API with {files=} - response was {r}"
