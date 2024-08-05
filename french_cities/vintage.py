@@ -176,7 +176,7 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
             break
     try:
         return df.at[0, "code"]
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, KeyError):
         logger.error("No projection found for city %s", x)
         return None
 
@@ -307,7 +307,11 @@ def _get_parents_from_serie(
     """
     parents = []
     func = partial(
-        get_ascending_area, area=type_, date=f"{year}-01-01", type="commune"
+        get_ascending_area,
+        area=type_,
+        date=f"{year}-01-01",
+        type="commune",
+        silent=True,
     )
     for code in tqdm(codes, desc="get parent from insee", leave=False):
         parents.append(
@@ -349,7 +353,7 @@ def _get_subareas_year(
     4  13205  13055
 
     """
-    subareas = get_area_list(area=type_, date=f"{year}-01-01")
+    subareas = get_area_list(area=type_, date=f"{year}-01-01", silent=True)
     try:
         subareas = subareas.drop("DATE_DELETION", axis=1)
     except KeyError:

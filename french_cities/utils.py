@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from contextlib import contextmanager
 import diskcache
 import os
 from pathlib import Path
 
 import pynsee.utils
 from pynsee.utils.init_conn import init_conn
-import requests_cache
 
 from french_cities import DIR_CACHE
 
@@ -38,15 +36,3 @@ def init_pynsee():
         keys = ["insee_key", "insee_secret", "http_proxy", "https_proxy"]
         kwargs = {x: os.environ[x] for x in keys if x in os.environ}
         init_conn(**kwargs)
-
-
-@contextmanager
-def patch_the_patch():
-    """
-    Patches the multipart form boundary and prevent underscore (crashing the
-    BAN webserver)
-    """
-    init_val = requests_cache._utils.FORM_BOUNDARY
-    requests_cache._utils.FORM_BOUNDARY = "requests-cache-form-boundary"
-    yield
-    requests_cache._utils.FORM_BOUNDARY = init_val
