@@ -311,7 +311,7 @@ def _get_parents_from_serie(
         area=type_,
         date=f"{year}-01-01",
         type="commune",
-        silent=True,
+        # silent=True,    # to reset once pynsee's bug is fixed
     )
     for code in tqdm(codes, desc="get parent from insee", leave=False):
         parents.append(
@@ -353,7 +353,11 @@ def _get_subareas_year(
     4  13205  13055
 
     """
-    subareas = get_area_list(area=type_, date=f"{year}-01-01", silent=True)
+    subareas = get_area_list(
+        area=type_,
+        date=f"{year}-01-01",
+        # silent=True  # to reset once pynsee's bug is fixed
+    )
     try:
         subareas = subareas.drop("DATE_DELETION", axis=1)
     except KeyError:

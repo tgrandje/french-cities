@@ -47,7 +47,12 @@ def _get_ultramarines_cities(
     """
 
     area = "collectivitesDOutreMer"
-    um = get_area_list(area, date, update, silent=True)
+    um = get_area_list(
+        area,
+        date,
+        update,
+        # silent=True,  # to reset once pynsee's bug is fixed
+    )
     if date == "*":
         warning = (
             f"get_descending_area with {area=} does not support date='*': "
