@@ -5,6 +5,11 @@ Created on Sun Jul 21 20:27:29 2024
 Gather ultramarine territories as well as formal cities from french department.
 This allows to recognized ultramarine territories.
 """
+
+from french_cities.utils import _insee_ratelimit
+
+_insee_ratelimit()
+
 import datetime
 import logging
 import os

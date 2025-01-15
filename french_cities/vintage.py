@@ -6,6 +6,10 @@ Module used to project a dataset into a known vintage, wether the original
 vintage is known or not.
 """
 
+from french_cities.utils import _insee_ratelimit
+
+_insee_ratelimit()
+
 from datetime import date, datetime
 import os
 from functools import partial
