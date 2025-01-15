@@ -9,7 +9,7 @@ import pandas as pd
 from requests_cache import CachedSession
 
 
-from french_cities import find_departements_from_names, find_city
+from french_cities import find_departements, find_city
 
 # =============================================================================
 # Configuration de l'API INSEE
@@ -33,7 +33,9 @@ df = pd.read_html(r.content, encoding="utf8")[0]
 # =============================================================================
 # Reconnaissance des départements, puis des communes
 # =============================================================================
-df = find_departements_from_names(df, label="Département", alias="DEP_CODE")
+df = find_departements(
+    df, source="Département", alias="DEP_CODE", type_field="label"
+)
 df = find_city(
     df,
     x=False,
