@@ -271,11 +271,11 @@ def find_city(
     if year != "last":
         try:
             int(year)
-        except ValueError:
+        except ValueError as exc:
             raise ValueError(
                 "year should either be castable to int or 'last', "
                 f"found {year} instead"
-            )
+            ) from exc
 
     columns = set(df.columns)
     necessary1 = {postcode, city}
@@ -469,34 +469,40 @@ def find_city(
         )
 
         if type_ban_search == "municipality":
-            ix = addresses[
-                np.all(
-                    [addresses[col].isnull() for col in cols_candidates],
-                    axis=0,
-                )
-                & np.all(
-                    [addresses[col].notnull() for col in components], axis=0
-                )
-                & (addresses[f"candidat_{k+1}"].isnull())
-            ].index
+            try:
+                addresses[f"candidat_{k+1}"]
+            except KeyError:
+                pass
+            else:
+                ix = addresses[
+                    np.all(
+                        [addresses[col].isnull() for col in cols_candidates],
+                        axis=0,
+                    )
+                    & np.all(
+                        [addresses[col].notnull() for col in components],
+                        axis=0,
+                    )
+                    & (addresses[f"candidat_{k+1}"].isnull())
+                ].index
 
-            if len(ix) > 0:
-                # Try to use individual geocoding specifying target type
-                # (ie. "municipality" to get better results)
+                if len(ix) > 0:
+                    # Try to use individual geocoding specifying target type
+                    # (ie. "municipality" to get better results)
 
-                results_api = _query_BAN_individual_geocoder(
-                    addresses=addresses.loc[ix],
-                    components=components,
-                    session=session,
-                    dep=dep,
-                )
-                addresses = _filter_BAN_results(
-                    results_api=results_api,
-                    session=session,
-                    rename_candidat=f"candidat_{k+1}",
-                    addresses=addresses,
-                    dep=dep,
-                )
+                    results_api = _query_BAN_individual_geocoder(
+                        addresses=addresses.loc[ix],
+                        components=components,
+                        session=session,
+                        dep=dep,
+                    )
+                    addresses = _filter_BAN_results(
+                        results_api=results_api,
+                        session=session,
+                        rename_candidat=f"candidat_{k+1}",
+                        addresses=addresses,
+                        dep=dep,
+                    )
 
     # Proceed in two steps to keep best result (in case there are results from
     # geolocation on lines with nothing other than coordinates)
@@ -677,8 +683,9 @@ def _find_with_nominatim_geolocation(
     estimated_time = len(look_for) / 60
     logger.warning(
         "Nominatim API will perform requests at a rate of one request "
-        f"per second : this task may take up to {round(estimated_time)+1} min "
-        "(estimation without cache processing)..."
+        "per second : this task may take up to %s min "
+        "(estimation without cache processing)...",
+        round(estimated_time) + 1,
     )
 
     tqdm.pandas(desc="Querying Nominatim", leave=False)
@@ -935,11 +942,11 @@ def _find_from_geoloc(
     if year != "last":
         try:
             int(year)
-        except ValueError:
+        except ValueError as exc:
             raise ValueError(
                 "year should either be castable to int or 'last', "
                 f"found {year} instead"
-            )
+            ) from exc
 
     if str(year) not in {str(date.today().year), "last"}:
         logger.warning(
@@ -1003,7 +1010,7 @@ def _query_BAN_csv_geocoder(
 
     """
     # Use the BAN's CSV geocoder
-    logger.info(f"request BAN with CSV geocoder and {components}...")
+    logger.info("request BAN with CSV geocoder and %s...", components)
 
     files = [
         ("data", addresses.to_csv(index=False)),
@@ -1041,11 +1048,11 @@ def _query_BAN_csv_geocoder(
                 on="full",
             )
         )
-    except Exception:
+    except Exception as exc:
         raise ValueError(
             "Failed to parse BAN's return with following content :\n\n"
             f"{r.content}"
-        )
+        ) from exc
     return results_api
 
 
@@ -1087,7 +1094,7 @@ def _query_BAN_individual_geocoder(
 
     # revert to multiple queries of BAN, see issue here:
     # https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
-    logger.info(f"request BAN with individual requests and {components}...")
+    logger.info("request BAN with individual requests and %s...", components)
 
     def get(x):
         r = session.get(
@@ -1102,7 +1109,7 @@ def _query_BAN_individual_geocoder(
         try:
             features = r["features"]
         except KeyError:
-            logger.error(f"query was q={x}")
+            logger.error("query was q=%s", x)
             logger.error(r)
             raise
 
