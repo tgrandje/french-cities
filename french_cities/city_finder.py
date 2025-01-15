@@ -152,11 +152,11 @@ def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
         lambda xy: fuzz.token_sort_ratio(*xy), axis=1
     )
 
-    dups[["city_cleaned", "TITLE_SHORT", "score"]]
+    # dups[["city_cleaned", "TITLE_SHORT", "score"]]
     ok = (
         dups[dups.score > 80]
         .fillna("")
-        .groupby(keys, as_index=False)
+        .groupby(keys, as_index=False)[dups.columns.tolist()]
         .apply(lambda df: df[df["score"] == df["score"].max()])
     )
     ko = set(dups["index"]) - set(ok["index"])
@@ -1113,7 +1113,10 @@ def _query_BAN_individual_geocoder(
             logger.error(r)
             raise
 
-        query = r["query"]
+        try:
+            query = r["query"]
+        except KeyError:
+            query = x
         for dict_ in features:
             dict_["properties"].update({"full": query})
 
