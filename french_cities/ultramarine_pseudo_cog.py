@@ -6,23 +6,27 @@ Gather ultramarine territories as well as formal cities from french department.
 This allows to recognized ultramarine territories.
 """
 
-from french_cities.utils import _insee_ratelimit
-
-_insee_ratelimit()
-
 import datetime
 import logging
 import os
 
 import diskcache
 import pandas as pd
-from pynsee.localdata import get_area_list, get_descending_area
+
+# from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
+from french_cities.pynsee_patch import get_area_list, get_descending_area
 
 logger = logging.getLogger(__name__)
+
+
+def set_default_date():
+    date = datetime.date(datetime.date.today().year, 1, 1)
+    date = date.strftime("%Y-%m-%d")
+    return date
 
 
 def _get_ultramarines_cities(
@@ -59,14 +63,14 @@ def _get_ultramarines_cities(
         # silent=True,  # to reset once pynsee's bug is fixed
     )
     if date == "*":
+        date = set_default_date()
         warning = (
             f"get_descending_area with {area=} does not support date='*': "
             f"querying for {date=} instead"
         )
         logging.warning(warning)
-    if date == "*" or not date:
-        date = datetime.date(datetime.date.today().year, 1, 1)
-        date = date.strftime("%Y-%m-%d")
+    if not date:
+        date = set_default_date()
 
     cache_ultramarine = diskcache.Cache(os.path.join(DIR_CACHE, "ultramarine"))
     try:
