@@ -13,12 +13,11 @@ import os
 import diskcache
 import pandas as pd
 
-# from pynsee.localdata import get_area_list, get_descending_area
+from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
-from french_cities.pynsee_patch import get_area_list, get_descending_area
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +79,8 @@ def _get_ultramarines_cities(
         pass
     except KeyError:
         pass
+
+    # TODO : parallélisation
     desc = "Get descending area for ultra-marine territories"
     cities = []
     for code in tqdm(um["CODE"], total=len(um), desc=desc, leave=False):

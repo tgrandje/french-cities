@@ -13,20 +13,15 @@ import logging
 import diskcache
 import pandas as pd
 
-# from pynsee.localdata import get_area_list
-# from pynsee.localdata import get_ascending_area
-# from pynsee.localdata import get_area_projection
+from pynsee.localdata import get_area_list
+from pynsee.localdata import get_ascending_area
+from pynsee.localdata import get_area_projection
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
-from french_cities.pynsee_patch import (
-    get_area_list,
-    get_area_projection,
-    get_descending_area,
-    get_ascending_area,
-)
+
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +155,7 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
     except KeyError:
         pass
 
+    # TODO : parallélisation ? Pas sûr...
     for date_init in starting_dates:
 
         # Hack to deactivate standard error log entries by pynsee which are
@@ -319,6 +315,8 @@ def _get_parents_from_serie(
         type="commune",
         # silent=True,    # to reset once pynsee's bug is fixed
     )
+
+    # TODO : parallélisation
     for code in tqdm(codes, desc="get parent from insee", leave=False):
         parents.append(
             {"CODE": code, "PARENT": func(code=code).loc[0, "code"]}

@@ -5,8 +5,6 @@ from pathlib import Path
 
 import diskcache
 
-from french_cities.pynsee_patch import _insee_ratelimit
-
 import pynsee.utils
 from pynsee.utils.init_conn import init_conn
 from pynsee.utils._clean_insee_folder import _clean_insee_folder
@@ -28,13 +26,7 @@ def clear_all_cache():
             cache.clear()
 
     # Clear request-cache's cache
-    [
-        os.unlink(f.path)
-        for f in os.scandir(DIR_CACHE)
-        if not f.is_dir()
-        # Do NOT reboot the API's rate consumption!
-        and not "rate_pynsee" in f.path
-    ]
+    [os.unlink(f.path) for f in os.scandir(DIR_CACHE) if not f.is_dir()]
 
     # Clear pynsee's cache
     pynsee.utils.clear_all_cache()
@@ -47,7 +39,6 @@ def init_pynsee():
     """
     home = str(Path.home())
     pynsee_credentials_file = os.path.join(home, "pynsee_credentials.csv")
-    _insee_ratelimit()
     if not os.path.exists(pynsee_credentials_file):
         clear_all_cache()
         keys = ["insee_key", "insee_secret", "http_proxy", "https_proxy"]

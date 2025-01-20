@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "french-cities"
-version = "1.0.3"
+version = "2.0.0"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "GPL-3.0-or-later"
@@ -28,7 +28,7 @@ python-dotenv = "^1.0.0"
 pandas = "^2.2.2"
 geopandas = "^1.0.1"
 rapidfuzz = "^3.1.1"
-pynsee = "0.1.7"
+pynsee = {git = "https://github.com/InseeFrLab/pynsee", rev = "inspect-github-timeouts"}
 pebble = "^5.0.3"
 tqdm = "^4.65.0"
 importlib-metadata = "^6.8.0"
