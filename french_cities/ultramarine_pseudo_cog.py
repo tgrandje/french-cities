@@ -74,8 +74,10 @@ def _get_ultramarines_cities(
 
     cache_ultramarine = diskcache.Cache(os.path.join(DIR_CACHE, "ultramarine"))
     try:
-        cities = cache_ultramarine[date]
-        return cities
+        if not update:
+            cities = cache_ultramarine[date]
+            return cities
+        pass
     except KeyError:
         pass
     desc = "Get descending area for ultra-marine territories"
@@ -91,15 +93,17 @@ def _get_ultramarines_cities(
                     update=update,
                     type=types.pop(0),
                 )
+                if this_territory is None:
+                    raise IndexError
             except RequestException:
                 continue
             except IndexError:
-                logger.info(
-                    "No cities found for ultramarine territory %s", code
-                )
+                continue
             else:
-                cities.append(this_territory)
                 break
+        if this_territory is None or this_territory.empty:
+            logger.info("No cities found for ultramarine territory %s", code)
+        cities.append(this_territory)
 
     cities = pd.concat(cities)
     cities = cities.rename(
