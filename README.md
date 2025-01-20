@@ -3,6 +3,15 @@ This repo contains the documentation of the python french-cities package, a
 package aimed at improving the referencing of municipalities in French 🇫🇷 
 datasets.
 
+# Update
+
+1.0.3 is a new release of `french-cities` and is meant to fix some bugs in the
+current version. It is still working with the (now) ancient API portal, before
+it's revocation next month.
+
+A new version will be released soon to work with the new portal (including a much better
+query rate authorization).
+
 # Documentation
 
 A full documentation with usecases is available at
