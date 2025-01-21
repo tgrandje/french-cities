@@ -3822,7 +3822,7 @@ full = ["openpyxl (<=3.1.0)", "xlrd (>=2.0.1)"]
 type = "git"
 url = "https://github.com/InseeFrLab/pynsee"
 reference = "inspect-github-timeouts"
-resolved_reference = "a334347f850e783d35c92ce1c0ad84581d4f0b3b"
+resolved_reference = "46a56d3742ae307073608b4fe8878270e94378df"
 
 [[package]]
 name = "pyobjc-core"
