@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from functools import lru_cache
 import os
-from pathlib import Path
 
 import diskcache
 
@@ -33,15 +33,12 @@ def clear_all_cache():
     _clean_insee_folder()
 
 
+@lru_cache(maxsize=None)
 def init_pynsee():
     """
-    Initiate an INSEE API connection with tokens and proxies.
+    Initiate an INSEE API connection with proxies.
     """
-    home = str(Path.home())
-    pynsee_credentials_file = os.path.join(home, "pynsee_credentials.csv")
-    if not os.path.exists(pynsee_credentials_file):
-        clear_all_cache()
-        keys = ["insee_key", "insee_secret", "http_proxy", "https_proxy"]
-        kwargs = {x: os.environ[x] for x in keys if x in os.environ}
-
-        init_conn(**kwargs)
+    keys = ["http_proxy", "https_proxy"]
+    kwargs = {x: os.environ[x] for x in keys if x in os.environ}
+    kwargs["sirene_key"] = None
+    init_conn(**kwargs)

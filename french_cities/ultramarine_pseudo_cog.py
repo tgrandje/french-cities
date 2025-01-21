@@ -59,7 +59,7 @@ def _get_ultramarines_cities(
         area,
         date,
         update,
-        # silent=True,  # to reset once pynsee's bug is fixed
+        silent=True,
     )
     if date == "*":
         date = set_default_date()
@@ -94,7 +94,7 @@ def _get_ultramarines_cities(
                     update=update,
                     type=types.pop(0),
                 )
-                if this_territory is None:
+                if this_territory.empty:
                     raise IndexError
             except RequestException:
                 continue
@@ -180,3 +180,13 @@ def get_departements_and_ultramarines(date=None, update=None):
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
+
+
+if __name__ == "__main__":
+    from french_cities.utils import init_pynsee
+
+    # os.environ["http_proxy"] = ""
+    # os.environ["https_proxy"] = ""
+    init_pynsee()
+    df = _get_ultramarines_cities("2023-01-01", update=True)
+    print(df)
