@@ -93,7 +93,7 @@ def _get_ultramarines_cities(
                     update=update,
                     type=types.pop(0),
                 )
-                if this_territory is None:
+                if this_territory.empty:
                     raise IndexError
             except RequestException:
                 continue
@@ -105,7 +105,7 @@ def _get_ultramarines_cities(
             logger.info("No cities found for ultramarine territory %s", code)
         cities.append(this_territory)
 
-    cities = pd.concat(cities)
+    cities = pd.concat(cities).drop_duplicates()
     cities = cities.rename(
         {
             "code": "CODE",
@@ -179,3 +179,7 @@ def get_departements_and_ultramarines(date=None, update=None):
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
+
+
+if __name__ == "__main__":
+    df = _get_ultramarines_cities("2023-01-01", update=True)
