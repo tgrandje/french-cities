@@ -43,7 +43,9 @@ class CustomLimiterSession(requests.Session):
 
         super().__init__()
 
-        retry = Retry(total=8, connect=3, backoff_factor=1)
+        retry = Retry(
+            total=7, backoff_factor=1, status_forcelist=[429, 502, 503, 504]
+        )
         rate_backend_path = os.path.join(DIR_CACHE, "rate_pynsee.sqlite")
 
         adapter = LimiterAdapter(
@@ -66,12 +68,8 @@ class CustomLimiterSession(requests.Session):
         after=after_log(logger, logging.WARNING),
         retry_error_callback=traceback_after_retries,
     )
-    def request(self, method, url, **kwargs):
+    def request(self, method, url, timeout=(10, 15), **kwargs):
         logger.info(url)
-        try:
-            timeout = kwargs.pop("timeout")
-        except KeyError:
-            timeout = 30
         response = super().request(method, url, timeout=timeout, **kwargs)
         return response
 
