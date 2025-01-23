@@ -5,19 +5,28 @@ Created on Sun Jul 21 20:27:29 2024
 Gather ultramarine territories as well as formal cities from french department.
 This allows to recognized ultramarine territories.
 """
+
 import datetime
 import logging
 import os
 
 import diskcache
 import pandas as pd
-from pynsee.localdata import get_area_list, get_descending_area
+
+# from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
+from french_cities.pynsee_patch import get_area_list, get_descending_area
 
 logger = logging.getLogger(__name__)
+
+
+def set_default_date():
+    date = datetime.date(datetime.date.today().year, 1, 1)
+    date = date.strftime("%Y-%m-%d")
+    return date
 
 
 def _get_ultramarines_cities(
@@ -54,19 +63,21 @@ def _get_ultramarines_cities(
         # silent=True,  # to reset once pynsee's bug is fixed
     )
     if date == "*":
+        date = set_default_date()
         warning = (
             f"get_descending_area with {area=} does not support date='*': "
             f"querying for {date=} instead"
         )
         logging.warning(warning)
-    if date == "*" or not date:
-        date = datetime.date(datetime.date.today().year, 1, 1)
-        date = date.strftime("%Y-%m-%d")
+    if not date:
+        date = set_default_date()
 
     cache_ultramarine = diskcache.Cache(os.path.join(DIR_CACHE, "ultramarine"))
     try:
-        cities = cache_ultramarine[date]
-        return cities
+        if not update:
+            cities = cache_ultramarine[date]
+            return cities
+        pass
     except KeyError:
         pass
     desc = "Get descending area for ultra-marine territories"
@@ -82,17 +93,19 @@ def _get_ultramarines_cities(
                     update=update,
                     type=types.pop(0),
                 )
+                if this_territory.empty:
+                    raise IndexError
             except RequestException:
                 continue
             except IndexError:
-                logger.info(
-                    "No cities found for ultramarine territory %s", code
-                )
+                continue
             else:
-                cities.append(this_territory)
                 break
+        if this_territory is None or this_territory.empty:
+            logger.info("No cities found for ultramarine territory %s", code)
+        cities.append(this_territory)
 
-    cities = pd.concat(cities)
+    cities = pd.concat(cities).drop_duplicates()
     cities = cities.rename(
         {
             "code": "CODE",
@@ -166,3 +179,7 @@ def get_departements_and_ultramarines(date=None, update=None):
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
+
+
+if __name__ == "__main__":
+    df = _get_ultramarines_cities("2023-01-01", update=True)

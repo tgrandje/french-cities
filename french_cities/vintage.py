@@ -5,7 +5,6 @@ Created on Fri Jul  7 09:17:12 2023
 Module used to project a dataset into a known vintage, wether the original
 vintage is known or not.
 """
-
 from datetime import date, datetime
 import os
 from functools import partial
@@ -13,14 +12,21 @@ import logging
 
 import diskcache
 import pandas as pd
-from pynsee.localdata import get_area_list
-from pynsee.localdata import get_ascending_area
-from pynsee.localdata import get_area_projection
+
+# from pynsee.localdata import get_area_list
+# from pynsee.localdata import get_ascending_area
+# from pynsee.localdata import get_area_projection
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
+from french_cities.pynsee_patch import (
+    get_area_list,
+    get_area_projection,
+    get_descending_area,
+    get_ascending_area,
+)
 
 logger = logging.getLogger(__name__)
 
