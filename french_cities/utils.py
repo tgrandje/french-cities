@@ -6,7 +6,7 @@ import os
 import diskcache
 
 import pynsee.utils
-from pynsee.utils.init_conn import init_conn
+from pynsee.utils import init_conn
 from pynsee.utils._clean_insee_folder import _clean_insee_folder
 
 from french_cities import DIR_CACHE
