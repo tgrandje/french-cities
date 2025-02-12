@@ -1,4 +1,10 @@
 # french-cities
+
+![Test Coverage](./coverage.svg)
+![Supported Python Versions](./python_versions.svg)
+![Monthly Downloads](https://img.shields.io/pypi/dm/french-cities)
+![Total Downloads](https://img.shields.io/pepy/dt/french-cities)
+
 This repo contains the documentation of the python french-cities package, a 
 package aimed at improving the referencing of municipalities in French 🇫🇷 
 datasets.

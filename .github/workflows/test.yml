@@ -48,16 +48,11 @@ jobs:
         run: poetry install --no-interaction --without dev 
         
       #----------------------------------------------
-      # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
+      # add pytest suite (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
-      - name: Add pytest
-        run: poetry run pip install pytest
+      - name: Add pytest pytest-cov genbadge[all]
+        run: poetry run pip install pytest pytest-cov genbadge[all]
       
-      #----------------------------------------------
-      # add only pytest-cov for tests (not the full dev dependencies to avoid installing spyder)
-      #----------------------------------------------
-      - name: Add pytest-cov
-        run: poetry run pip install pytest-cov
 
       #----------------------------------------------
       #              run test suite
@@ -66,4 +61,18 @@ jobs:
         env:
           insee_key: ${{secrets.INSEE_KEY}}
           insee_secret: ${{secrets.INSEE_SECRET}}
-        run: poetry run pytest --cov -s
+        run: poetry run pytest --cov
+        
+      - name: Generate coverage badge
+        run: genbadge coverage -i .coverage -o coverage.svg
+        
+      - name: Generate Python versions badge
+        run: genbadge python -i setup.py -o python_versions.svg
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Add badges"
+          git push
