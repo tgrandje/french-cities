@@ -53,13 +53,6 @@ jobs:
       - name: Add pytest pytest-cov genbadge[all] flake8 black
         run: poetry run pip install pytest pytest-cov genbadge[all] flake8 black
 
-
-      #----------------------------------------------
-      #              run test suite
-      #----------------------------------------------
-      - name: Run tests
-        run: poetry run pytest --cov-config pyproject.toml --cov
-
       - name: Config git
         run: |
           git config --global user.name "github-actions[bot]"
@@ -71,10 +64,14 @@ jobs:
           poetry run genbadge flake8 -o ./badges/flake8-badge.svg
           git add ./badges/flake8-badge.svg
 
-      - name: Generate coverage badge
+      #----------------------------------------------
+      #              run test suite
+      #----------------------------------------------
+      - name: Run tests and generate coverage badge
         run: |
+          poetry run pytest --cov-config pyproject.toml --cov
           poetry run genbadge coverage -o ./badges/coverage-badge.svg
-          git add ./badges/flake8-badge.svg
+          git add ./badges/coverage-badge.svg
 
       - name: Commit changes
         run: |
