@@ -69,6 +69,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
         run: |
+          /usr/bin/git pull
           /usr/bin/git config --global user.name "github-actions[bot]"
           /usr/bin/git config --global user.email "github-actions[bot]@users.noreply.github.com"
           /usr/bin/git add ./badges/flake8-badge.svg
