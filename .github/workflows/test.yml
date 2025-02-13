@@ -58,10 +58,12 @@ jobs:
       #              run test suite
       #----------------------------------------------
       - name: Run tests
-        env:
-          insee_key: ${{secrets.INSEE_KEY}}
-          insee_secret: ${{secrets.INSEE_SECRET}}
-        run: poetry run pytest --cov
+        run: poetry run pytest --cov-config pyproject.toml --cov
+
+      - name: Config git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: flake8 check & badge
         run: |
@@ -70,15 +72,11 @@ jobs:
           git add ./badges/flake8-badge.svg
 
       - name: Generate coverage badge
-        run: poetry run genbadge coverage -i .coverage -o coverage.svg
-
-      - name: Generate Python versions badge
-        run: poetry run genbadge python -i setup.py -o python_versions.svg
+        run: |
+          poetry run genbadge coverage -o ./badges/coverage-badge.svg
+          git add ./badges/flake8-badge.svg
 
       - name: Commit changes
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
           git commit -m "Add badges"
           git push

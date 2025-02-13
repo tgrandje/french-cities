@@ -2,8 +2,8 @@
 
 ![flake8 checks](./badges/flake8-badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![Test Coverage](./coverage.svg)
-![Supported Python Versions](./python_versions.svg)
+![Test Coverage](./badges/coverage-badge.svg)
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/french-cities)](https://pypi.python.org/pypi/french-cities/)
 ![Monthly Downloads](https://img.shields.io/pypi/dm/french-cities)
 ![Total Downloads](https://img.shields.io/pepy/dt/french-cities)
 
