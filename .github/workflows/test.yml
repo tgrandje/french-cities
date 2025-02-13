@@ -68,9 +68,6 @@ jobs:
         run: |
           black . --config pyproject.toml
 
-      #----------------------------------------------
-      #              run test suite
-      #----------------------------------------------
       - name: Run tests and generate coverage badge
         run: |
           poetry run pytest --cov-config pyproject.toml --cov

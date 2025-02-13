@@ -1,6 +1,6 @@
 name: publish
 
-on: 
+on:
   push:
     tags:
       - v**
@@ -44,38 +44,40 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --without dev
-        
+
       #----------------------------------------------
       # add pytest suite (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
-      - name: Add pytest pytest-cov genbadge[all]
-        run: poetry run pip install pytest pytest-cov genbadge[all]
-     
+      - name: Add pytest pytest-cov genbadge[all] flake8 black
+        run: poetry run pip install pytest pytest-cov genbadge[all] flake8 black
 
-      #----------------------------------------------
-      #              run test suite
-      #----------------------------------------------
-      - name: Run tests
-        env:
-          insee_key: ${{secrets.INSEE_KEY}}
-          insee_secret: ${{secrets.INSEE_SECRET}}
-        run: poetry run pytest --cov
-        
-      - name: Generate coverage badge
-        run: poetry run genbadge coverage -i .coverage -o coverage.svg
-        
-      - name: Generate Python versions badge
-        run: poetry run genbadge python -i setup.py -o python_versions.svg
-    
-      - name: Commit changes
+      - name: Config git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
+
+      - name: flake8 check & badge
+        run: |
+          poetry run flake8 --config .flake8 --output-file ./reports/flake8/flake8stats.txt
+          poetry run genbadge flake8 -o ./badges/flake8-badge.svg
+          git add ./badges/flake8-badge.svg
+
+      - name: run black
+        run: |
+          black . --config pyproject.toml
+
+      - name: Run tests and generate coverage badge
+        run: |
+          poetry run pytest --cov-config pyproject.toml --cov
+          poetry run genbadge coverage -o ./badges/coverage-badge.svg
+          git add ./badges/coverage-badge.svg
+
+      - name: Commit changes
+        run: |
           git commit -m "Add badges"
           git push
-        
-        
+
+
   publish:
     runs-on: ubuntu-latest
     needs: test
@@ -115,25 +117,25 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root --without dev --extras "full"
-        
+
       #----------------------------------------------
       # install your root project, if required
       #----------------------------------------------
       - name: Install project
         run: poetry install --no-interaction --without dev
-      
+
       #----------------------------------------------
       # config pypi token
       #----------------------------------------------
       - name: Set pypi token
         run: poetry config pypi-token.pypi ${{secrets.PYPI_TOKEN}}
-        
+
       #----------------------------------------------
       # build
       #----------------------------------------------
       - name: Build
         run: poetry build
-      
+
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------

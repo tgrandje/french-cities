@@ -20,8 +20,8 @@ de reconnaissance de l'état de
 Par exemple, nous allons nous intéresser à l'
 [arrêté du 14 novembre 2023](https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000048393151).
 
-_Remarque : dans le cadre de l'exemple, nous allons récupérer cet arrêté par 
-requêtage direct du site legifrance.gouv.fr. Cette méthode peut échouer, 
+_Remarque : dans le cadre de l'exemple, nous allons récupérer cet arrêté par
+requêtage direct du site legifrance.gouv.fr. Cette méthode peut échouer,
 le site étant doté d'un captcha. Dans une situation réelle, il conviendrait
 d'utiliser l'[API Legifrance](https://api.gouv.fr/les-api/DILA_api_Legifrance)
 pour accéder au contenu. Néanmoins, l'accès par API complexifie largement le

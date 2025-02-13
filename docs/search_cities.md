@@ -9,7 +9,7 @@ nav_order: 5
 # Reconnaissance des communes : `find_city`
 
 `french-cities` peut retrouver un code commune à partir de champs multiples.
-Il est capable de détecter certaines erreurs simples dans les champs (jusqu'à 
+Il est capable de détecter certaines erreurs simples dans les champs (jusqu'à
 une certaine limite).
 
 Les colonnes utilisées par l'algorithme pour cette détection sont (par ordre
@@ -29,7 +29,7 @@ spatialisées du COG servi par `pynsee` n'étant pas millésimé à ce jour.
 
 Les reconnaissances exécutées à partir des autres champs sont toutes syntaxiques :
 elles utilisent des techniques de fuzzy-matching internes ou externe (BAN par exemple).
-L'algorithme tâchera d'éliminer les résultats insuffisamment fiables, mais des 
+L'algorithme tâchera d'éliminer les résultats insuffisamment fiables, mais des
 erreurs peuvent bien sûr subsister.
 
 Les étapes de l'algorithme sont les suivantes, par ordre de priorité :
@@ -112,38 +112,38 @@ print(df)
 
 ```
 find_city(
-    df: pandas.DataFrame, 
-    year: str = 'last', 
-    x: Union[str, bool] = 'x', 
-    y: Union[str, bool] = 'y', 
-    dep: Union[str, bool] = 'dep', 
-    city: Union[str, bool] = 'city', 
-    address: Union[str, bool] = 'address', 
-    postcode: Union[str, bool] = 'postcode', 
-    field_output: str = 'insee_com', 
-    epsg: int = None, 
-    session: requests.Session = None, 
+    df: pandas.DataFrame,
+    year: str = 'last',
+    x: Union[str, bool] = 'x',
+    y: Union[str, bool] = 'y',
+    dep: Union[str, bool] = 'dep',
+    city: Union[str, bool] = 'city',
+    address: Union[str, bool] = 'address',
+    postcode: Union[str, bool] = 'postcode',
+    field_output: str = 'insee_com',
+    epsg: int = None,
+    session: requests.Session = None,
     use_nominatim_backend: bool = False
 ) -> pandas.DataFrame:
 
     Find cities in a dataframe using multiple methods (either based on
     valid geolocation or lexical fields).
-    
+
     Do note that the results based on geolocation will be approximative as the
     IGN's WFS data is not vintaged (yet ?). The spatial join will then be
     computed against latest available data. A reprojection in the desired
     vintage will be done afterwards, but cities joined during this lapse time
     will NOT be correctly found.
-    
+
     Nonetheless, recognition based on lexical fields is also unperfect. These
     will use the Base Adresse Nationale (BAN) API, but results can't be
     guaranteed. The results using geolocation will then be given precedence.
-    
+
     To activate geolocation recognition, 2 criteria must be satisfied:
         - valids x and y fields (which exact labels will be passed as x and y
           arguments)
         - valid EPSG code related to the current projection
-    
+
     Lexical recognition will try to use the following fields (in that order
     of precedence):
         - department + city label (fuzzy matching through python)
@@ -152,7 +152,7 @@ find_city(
         - department + city label (through the BAN)
         - postcode + city label (through Nominatim, if activated)
         - dep + city label (through Nominatim, if activated)
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -192,14 +192,14 @@ find_city(
         might slow the process as the API's rate is on one request per second.
         Please read Nominatim Usage Policy at
         https://operations.osmfoundation.org/policies/nominatim/
-    
+
     Raises
     ------
     ValueError
         If year is not castable to int or equals to "last", or if no columns
         have been found which will match either (x, y), (postcode, city), or
         (dep, city)
-    
+
     Returns
     -------
     pd.DataFrame

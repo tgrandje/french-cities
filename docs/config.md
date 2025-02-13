@@ -16,7 +16,7 @@ fonctionnel. Deux variables d'environnement doivent impérativement être spéci
 * insee_key
 * insee_secret
 
-Merci de se référer à 
+Merci de se référer à
 [la documentation de `pynsee`](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
 pour plus d'information sur les clefs API et la configuration.
 
@@ -33,10 +33,10 @@ os.environ["insee_secret"] = "ma-clef-secrete"
 Les requêtes web fournies `french-cities` sont de trois types :
 * celles générées par `pynsee`, interrogeant les API INSEE ;
 * celles générées par `geopy`, interrogeant l'API Nominatim ;
-* celles générées en propre par `french-cities` pour interroger l'API de la 
+* celles générées en propre par `french-cities` pour interroger l'API de la
 Base Adresse Nationale et l'API Base officielle des codes postaux.
 
-Dans le cas où l'on souhaiterait utiliser des proxies professionnels 
+Dans le cas où l'on souhaiterait utiliser des proxies professionnels
 pour connexion internet, il suffit de fixer deux variables d'environnement
 supplémentaires :
 

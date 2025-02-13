@@ -20,7 +20,7 @@
 
 title: french-cities
 email: tgrandje@gmail.com
-description: 
+description:
   en: >- # this means to ignore newlines until "baseurl:"
     Documentation of python package `french-cities`, used as a bundle
     utilitary on managing french cities in datasets.
