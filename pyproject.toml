@@ -52,6 +52,9 @@ seaborn = "^0.13.2"
 vulture = "^2.14"
 pytest-cov = "^6.0.0"
 genbadge = {extras = ["all"], version = "^1.1.1"}
+flake8 = "^7.1.1"
+pre-commit = "^4.1.0"
+black = "^25.1.0"
 
 
 [tool.pytest.ini_options]
@@ -65,7 +68,10 @@ omit = [
     "tests/*",
     ]
 
+[tool.black]
+include = '\.py$'
+line-length = 79
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-

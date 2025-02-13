@@ -1,6 +1,6 @@
 name: test
 
-on: 
+on:
   push:
     tags-ignore:
       - v**
@@ -45,14 +45,14 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --without dev 
-        
+        run: poetry install --no-interaction --without dev
+
       #----------------------------------------------
       # add pytest suite (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
-      - name: Add pytest pytest-cov genbadge[all]
-        run: poetry run pip install pytest pytest-cov genbadge[all]
-      
+      - name: Add pytest pytest-cov genbadge[all] flake8 black
+        run: poetry run pip install pytest pytest-cov genbadge[all] flake8 black
+
 
       #----------------------------------------------
       #              run test suite
@@ -62,10 +62,16 @@ jobs:
           insee_key: ${{secrets.INSEE_KEY}}
           insee_secret: ${{secrets.INSEE_SECRET}}
         run: poetry run pytest --cov
-        
+
+      - name: flake8 check & badge
+        run: |
+          poetry run flake8 --config .flake8 --output-file ./reports/flake8/flake8stats.txt
+          poetry run genbadge flake8 -o ./badges/flake8-badge.svg
+          git add ./badges/flake8-badge.svg
+
       - name: Generate coverage badge
         run: poetry run genbadge coverage -i .coverage -o coverage.svg
-        
+
       - name: Generate Python versions badge
         run: poetry run genbadge python -i setup.py -o python_versions.svg
 
