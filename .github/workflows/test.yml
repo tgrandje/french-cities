@@ -53,16 +53,10 @@ jobs:
       - name: Add pytest pytest-cov genbadge[all] flake8 black
         run: poetry run pip install pytest pytest-cov genbadge[all] flake8 black
 
-      - name: Config git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: flake8 check & badge
         run: |
           poetry run flake8 --config .flake8 --output-file ./reports/flake8/flake8stats.txt
           poetry run genbadge flake8 -o ./badges/flake8-badge.svg
-          git add ./badges/flake8-badge.svg
 
       - name: run black
         run: |
@@ -72,11 +66,14 @@ jobs:
         run: |
           poetry run pytest --cov-config pyproject.toml --cov
           poetry run genbadge coverage -o ./badges/coverage-badge.svg
-          git add ./badges/coverage-badge.svg
 
       - name: Commit changes
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
         run: |
-          git commit -m "Add badges"
-          git push origin HEAD:${BRANCH_NAME}
+          /usr/bin/git config --global user.name "github-actions[bot]"
+          /usr/bin/git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          /usr/bin/git add ./badges/flake8-badge.svg
+          /usr/bin/git add ./badges/coverage-badge.svg
+          /usr/bin/git commit -m "Add badges"
+          /usr/bin/git push origin HEAD:${BRANCH_NAME}
