@@ -64,7 +64,7 @@ jobs:
 
       - name: run black
         run: |
-          black . --config pyproject.toml
+          poetry run black . --config pyproject.toml
 
       - name: Run tests and generate coverage badge
         run: |
@@ -73,6 +73,8 @@ jobs:
           git add ./badges/coverage-badge.svg
 
       - name: Commit changes
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
         run: |
           git commit -m "Add badges"
           git push
