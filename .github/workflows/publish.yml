@@ -69,13 +69,13 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
         run: |
-          /usr/bin/git pull
+          /usr/bin/git pull ${BRANCH_NAME}
           /usr/bin/git config --global user.name "github-actions[bot]"
           /usr/bin/git config --global user.email "github-actions[bot]@users.noreply.github.com"
           /usr/bin/git add ./badges/flake8-badge.svg
           /usr/bin/git add ./badges/coverage-badge.svg
           /usr/bin/git commit -m "Add badges"
-          /usr/bin/git push origin HEAD:${BRANCH_NAME}
+          /usr/bin/git push
 
 
   publish:
