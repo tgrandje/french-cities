@@ -64,6 +64,10 @@ jobs:
           poetry run genbadge flake8 -o ./badges/flake8-badge.svg
           git add ./badges/flake8-badge.svg
 
+      - name: run black
+        run: |
+          black . --config pyproject.toml
+
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------
