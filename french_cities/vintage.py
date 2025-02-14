@@ -167,6 +167,7 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
             area="commune",
             date=date_init,
             dateProjection=projection_date,
+            silent=True,
         )
         try:
             df = df.drop("DATE_DELETION", axis=1)

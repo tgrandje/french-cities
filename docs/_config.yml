@@ -67,6 +67,14 @@ logo: "/assets/img/french-cities.jpg"
 favicon_ico: "/assets/img/favicon-french-cities.ico"
 color_scheme: dark
 
+callouts:
+  warning:
+    title: 💡 Remarque
+    color: blue
+  critical:
+    title: ⚠️ Attention
+    color: red
+
 
 sass:
   sourcemap: never

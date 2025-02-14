@@ -93,6 +93,7 @@ def _get_ultramarines_cities(
                     date,
                     update=update,
                     type=types.pop(0),
+                    silent=True,
                 )
                 if this_territory.empty:
                     raise IndexError
@@ -149,7 +150,7 @@ def get_cities_and_ultramarines(
     """
 
     ultramarine = _get_ultramarines_cities(date, update)
-    cities = get_area_list("communes", date, update)
+    cities = get_area_list("communes", date, update, silent=True)
     full = pd.concat([ultramarine, cities], ignore_index=True)
     return full
 
@@ -173,10 +174,12 @@ def get_departements_and_ultramarines(date=None, update=None):
     full : pd.DataFrame
 
     """
-    ultramarine = get_area_list("collectivitesDOutreMer", date, update)
+    ultramarine = get_area_list(
+        "collectivitesDOutreMer", date, update, silent=True
+    )
     ultramarine = ultramarine.sort_values(["CODE", "DATE_CREATION"])
 
-    deps = get_area_list("departements", date, update)
+    deps = get_area_list("departements", date, update, silent=True)
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full

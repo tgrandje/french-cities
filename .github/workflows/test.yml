@@ -70,6 +70,7 @@ jobs:
           poetry run genbadge coverage -o ./badges/coverage-badge.svg
 
       - name: Commit changes
+        continue-on-error: true
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "22030685+tgrandje@users.noreply.github.com"

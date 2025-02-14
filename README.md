@@ -11,15 +11,6 @@ This repo contains the documentation of the python french-cities package, a
 package aimed at improving the referencing of municipalities in French 🇫🇷
 datasets.
 
-# Update
-
-1.0.3 is a new release of `french-cities` and is meant to fix some bugs in the
-current version. It is still working with the (now) ancient API portal, before
-it's revocation next month.
-
-A new version will be released soon to work with the new portal (including a much better
-query rate authorization).
-
 # Documentation
 
 A full documentation with usecases is available at
@@ -48,25 +39,36 @@ Do you have any data:
 # Configuration
 
 ## Setting INSEE's API keys
-`french-cities` uses `pynsee` under the hood. For it to work, you need to set
-the credentials up. You can set up to four environment variables:
-* insee_key
-* insee_secret,
+`french-cities` uses `pynsee` under the hood. Starting from `pynsee 0.2.0` (and `french-cities 1.1.0`),
+an API key is **not necessary anymore**.
+
+Note that as `pynsee` is far more than just retrieving information on cities:
+it may alert you that you are missing a SIRENE API key.
+This is perfectly normal and has **no impact** on `french-cities` whatsoever.
+
+## Working behind a corporate proxy
+
+Please set those (usual) environment variables to allow working behind a proxy:
 * http_proxy (if accessing web behind a corporate proxy)
 * https_proxy (if accessing web behind a corporate proxy)
 
-Please refer to [`pynsee`'s documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
-to help configure the API's access.
+If you can't set those variables directly, you can either have a look at python-dotenv
+or set those directly using python:
 
-Note that setting environment variable for proxy will set it for both `pynsee`
-and `geopy`.
+```python
+import os
+os.environ["https_proxy"] = "http://my_proxy_server:port"
+os.environ["http_proxy"] = "http://my_proxy_server:port"
+```
 
 ## Session management
-Note that `pynsee` and `geopy` use their own web session. Every Session object
-you will pass to `french-cities` will **NOT** be shared with `pynsee` or `geopy`.
+Note that `pynsee` and `geopy` (both used under the hood) use their own web session.
+Every Session object you will pass to `french-cities` will neither be shared with
+`pynsee` nor `geopy`.
+
 This explains the possibility to pass a session as an argument to `french-cities`
 functions, even if you had to configure the corporate proxy through environment
-variables for `pynsee` and `geopy`.
+variables (those will also impact `pynsee` and `geopy`).
 
 ## Basic usage
 
@@ -247,7 +249,7 @@ For a complete documentation on `set_vintage`, please type
 In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
 
 ## Contribution
-Any help is welcome.
+Any help is welcome. Please refer to the [CONTRIBUTING file](./CONTRIBUTING.md).
 
 ## Author
 Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Durable et Évaluation Environnementale, pôle Promotion de la Connaissance).

@@ -12,15 +12,16 @@ nav_order: 6
 la date initiale demeurant inconnue (voire inexistante, les cas de fichiers
 "multi-millésimés" étant fréquents dans la vie réelle).
 
-Des erreurs peuvent survenir, notamment pour les communes restaurées (dans la
-mesure où la date initiale de la donnée est inconnue ou inexistante).
-
-Dans le cas où la date des données est connue, il peut être préférable d'utiliser
-l'API de projection mise à disposition par l'INSEE et [accessible au travers de
-`pynsee`](https://pynsee.readthedocs.io/en/latest/get_data.html#pynsee.localdata.get_new_city).
- Il convient de noter que cette utilisation peut être lente, dans la
-mesure ou chaque commune devra être testée via l'API (qui n'autorise que
-30 requêtes par minute).
+{: .critical }
+> Des erreurs peuvent survenir, notamment pour les communes restaurées (dans la
+> mesure où la date initiale de la donnée est inconnue ou inexistante).
+>
+> Dans le cas où la date des données est connue, il peut être préférable d'utiliser
+> l'API de projection mise à disposition par l'INSEE et [accessible au travers de
+> `pynsee`](https://pynsee.readthedocs.io/en/latest/get_data.html#pynsee.localdata.get_new_city).
+> Il convient de noter que cette utilisation peut être lente, dans la
+> mesure ou chaque commune devra être testée via l'API (qui n'autorise que
+> 30 requêtes par minute).
 
 En substance, l'algorithme de `french-cities` contrôle si le code commune existe
 dans le millésime souhaité :

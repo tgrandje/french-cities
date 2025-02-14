@@ -19,7 +19,8 @@ de priorité) :
 * 'address', 'postcode' et 'city'
 * 'department' et 'city'
 
-💡 Nota : pour désactiver l'utilisation d'un champ (ou signaler son absence), il
+{: .warning }
+Pour désactiver l'utilisation d'un champ (ou signaler son absence), il
 convient de fournir la valeur `False` aux arguments de la fonction `find_city`.
 
 L'algorithme peut être source d'erreur dès lors que
@@ -49,7 +50,8 @@ Les étapes de l'algorithme sont les suivantes, par ordre de priorité :
     * si code postal disponible : géocodage Nominatim individuel (code postal + nom de commune) suivi d'une jointure spatiale
     * si département disponible : géocodage Nominatim individuel (département + nom de commune)  suivi d'une jointure spatiale
 
-💡 Nota : au vu de l'algorithme, toute erreur de département (éventuellement sur le code postal fourni)
+{: .warning }
+Au vu de l'algorithme, toute erreur de département (éventuellement sur le code postal fourni)
 risque fortement d'entraîner une absence de résultats. Ce comportement est considéré comme normal et ne
 pourra être résorbé que si la commune visée n'a aucun homonyme sur la France.
 

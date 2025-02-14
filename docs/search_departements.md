@@ -32,13 +32,14 @@ En dernier recours, une tentative est effectuée à partir des deux (ou trois po
 premiers caractères du code postal non reconnu. Si celui-ci correspond à un département
 effectif, il sera retenu.
 
-**⚠️ Attention :** il n'y a pas unicité entre un code postal donné et les départements déduits.
-Par exemple, le code postal 13780 est rattaché à des communes des départements 13 **et** 83.
-Dans ce cas, il est possible de spécifier le comportement de `find_departements` à l'aide de
-l'argument `authorize_duplicates` :
-* si `authorize_duplicates=True`, les résultats seront dupliqués ;
-* si `authorize_duplicates=False` (valeur par défaut) les potentiels doublons seront éliminés,
-et aucun résultat ne sera fourni.
+{: .critical }
+> Il n'y a pas unicité entre un code postal donné et les départements déduits.
+> Par exemple, le code postal 13780 est rattaché à des communes des départements 13 **et** 83.
+> Dans ce cas, il est possible de spécifier le comportement de `find_departements` à l'aide de
+> l'argument `authorize_duplicates` :
+> * si `authorize_duplicates=True`, les résultats seront dupliqués ;
+> * si `authorize_duplicates=False` (valeur par défaut) les potentiels doublons seront éliminés,
+> et aucun résultat ne sera fourni.
 
 Exemple d'utilisation :
 ```python
