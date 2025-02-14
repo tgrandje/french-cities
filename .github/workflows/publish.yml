@@ -13,7 +13,7 @@ jobs:
       #       check-out repo and set-up python
       #----------------------------------------------
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up python
         id: setup-python
         uses: actions/setup-python@v4
@@ -66,16 +66,16 @@ jobs:
           poetry run genbadge coverage -o ./badges/coverage-badge.svg
 
       - name: Commit changes
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }} 
+        with:
+          ref: ${{ github.head_ref }}
+        uses: actions/checkout@v4
         run: |
-          /usr/bin/git pull ${BRANCH_NAME}
-          /usr/bin/git config --global user.name "github-actions[bot]"
-          /usr/bin/git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          /usr/bin/git add ./badges/flake8-badge.svg
-          /usr/bin/git add ./badges/coverage-badge.svg
-          /usr/bin/git commit -m "Add badges"
-          /usr/bin/git push
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "22030685+tgrandje@users.noreply.github.com"
+          git add ./badges/flake8-badge.svg
+          git add ./badges/coverage-badge.svg
+          git commit -m "add badges"
+          git push
 
 
   publish:
@@ -86,7 +86,7 @@ jobs:
       #       check-out repo and set-up python
       #----------------------------------------------
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up python
         id: setup-python
         uses: actions/setup-python@v4
