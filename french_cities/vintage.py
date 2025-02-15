@@ -21,7 +21,7 @@ from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.constants import THREADS
-from french_cities.utils import init_pynsee
+from french_cities.utils import init_pynsee, silence_sirene_logs
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
 
@@ -492,6 +492,7 @@ def ultra_marine_territories_vintage(code: str, projection_date: str) -> str:
         raise KeyError("Not a city from ultramarine collectivities") from exc
 
 
+@silence_sirene_logs
 def set_vintage(
     df: pd.DataFrame, year: int, field: str, threads: int = THREADS
 ) -> pd.DataFrame:

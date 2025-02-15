@@ -108,20 +108,12 @@ def _get_ultramarines_cities(
             logger.info("No cities found for ultramarine territory %s", code)
         return this_territory
 
-    def filter_no_data(record):
-        return record.msg != "No data found !"
-
-    pynsee_log = logging.getLogger("pynsee.localdata.get_descending_area")
-    pynsee_log.addFilter(filter_no_data)
-
     desc = "Get descending area for ultra-marine territories"
     with ThreadPool(threads) as pool:
         # note: there's a rate limiter built-in pynsee, so this is safe
         future = pool.map(get_descending, um["CODE"])
         results = future.result()
         cities = list(tqdm(results, total=len(um), desc=desc, leave=False))
-
-    pynsee_log.removeFilter(filter_no_data)
 
     cities = pd.concat(cities)
     cities = cities.rename(

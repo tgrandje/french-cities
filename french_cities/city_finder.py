@@ -40,7 +40,7 @@ from french_cities import DIR_CACHE
 from french_cities.constants import THREADS
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
-from french_cities.utils import init_pynsee
+from french_cities.utils import init_pynsee, silence_sirene_logs
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
 
@@ -170,6 +170,7 @@ def _cleanup_results(
     return df
 
 
+@silence_sirene_logs
 def find_city(
     df: pd.DataFrame,
     year: str = "last",
