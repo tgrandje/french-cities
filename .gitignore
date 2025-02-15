@@ -161,4 +161,5 @@ cython_debug/
 #.idea/
 
 *.sqlite
-*.lock
+docs/Gemfile.lock
+reports/flake8/flake8stats.txt

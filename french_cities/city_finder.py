@@ -37,6 +37,7 @@ except ModuleNotFoundError:
     pass
 
 from french_cities import DIR_CACHE
+from french_cities.constants import THREADS
 from french_cities.vintage import set_vintage
 from french_cities.departement_finder import find_departements
 from french_cities.utils import init_pynsee
@@ -67,7 +68,9 @@ def get_machine_user_agent() -> str:
     return f"french-cities-{digest}"
 
 
-def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
+def _cleanup_results(
+    df: pd.DataFrame, alias_postcode: str, threads: int = THREADS
+) -> pd.DataFrame:
     """
     Quick and dirty function to remove multiple candidates for cities
     recognition.
@@ -84,6 +87,8 @@ def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
         'city_cleaned', 'dep', 'CODE'
     alias_postcode : str
         Field used to store the postcode
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -94,7 +99,7 @@ def _cleanup_results(df: pd.DataFrame, alias_postcode: str) -> pd.DataFrame:
 
     init_pynsee()
 
-    cities = get_cities_and_ultramarines(date="*")
+    cities = get_cities_and_ultramarines(date="*", threads=threads)
     cities["TITLE_SHORT"] = (
         cities["TITLE_SHORT"]
         .str.upper()
@@ -178,6 +183,7 @@ def find_city(
     epsg: int = None,
     session: Session = None,
     use_nominatim_backend: bool = False,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Find cities in a dataframe using multiple methods (either based on
@@ -246,6 +252,8 @@ def find_city(
         might slow the process as the API's rate is on one request per second.
         Please read Nominatim Usage Policy at
         https://operations.osmfoundation.org/policies/nominatim/
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Raises
     ------
@@ -311,9 +319,9 @@ def find_city(
     # User geolocation first
     elif len(necessary3 - columns) == 0 and epsg:
         # On peut travailler à partir de la géoloc
-        df = _find_from_geoloc(epsg, df, year, x, y, field_output).rename(
-            {field_output: "candidat_0"}, axis=1
-        )
+        df = _find_from_geoloc(
+            epsg, df, year, x, y, field_output, threads=threads
+        ).rename({field_output: "candidat_0"}, axis=1)
     try:
         df["candidat_0"]
     except KeyError:
@@ -388,6 +396,7 @@ def find_city(
                 "postcode",
                 session,
                 authorize_duplicates=True,
+                threads=threads,
             )
     except KeyError:
         pass
@@ -404,7 +413,13 @@ def find_city(
             .drop_duplicates()
         )
         addresses = _find_from_fuzzymatch_cities_names(
-            year, missing, "candidat_missing", addresses, dep, postcode
+            year,
+            missing,
+            "candidat_missing",
+            addresses,
+            dep,
+            postcode,
+            threads=threads,
         )
 
         addresses = addresses.drop_duplicates()
@@ -466,6 +481,7 @@ def find_city(
             rename_candidat=f"candidat_{k+1}",
             addresses=addresses,
             dep=dep,
+            threads=threads,
         )
 
         if type_ban_search == "municipality":
@@ -495,6 +511,7 @@ def find_city(
                         components=components,
                         session=session,
                         dep=dep,
+                        threads=threads,
                     )
                     addresses = _filter_BAN_results(
                         results_api=results_api,
@@ -502,6 +519,7 @@ def find_city(
                         rename_candidat=f"candidat_{k+1}",
                         addresses=addresses,
                         dep=dep,
+                        threads=threads,
                     )
 
     # Proceed in two steps to keep best result (in case there are results from
@@ -553,6 +571,7 @@ def find_city(
                 look_for=missing[["query"]],
                 alias="insee_com_nominatim",
                 cities=cities,
+                threads=threads,
             )
             if missing.empty:
                 continue
@@ -561,6 +580,7 @@ def find_city(
                 source="insee_com_nominatim",
                 alias="dep_nominatim",
                 type_field="insee",
+                threads=threads,
             )
             temp = df.loc[ix]
             temp["query"] = temp[use] + " " + temp["city_cleaned"]
@@ -606,7 +626,11 @@ def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
 
 
 def _find_with_nominatim_geolocation(
-    year: str, look_for: pd.DataFrame, alias: str, cities: gpd.GeoDataFrame
+    year: str,
+    look_for: pd.DataFrame,
+    alias: str,
+    cities: gpd.GeoDataFrame,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Use Nominatim API to geolocate rows of the dataframe. This can be a lengthy
@@ -624,6 +648,8 @@ def _find_with_nominatim_geolocation(
         dataframe
     cities : gpd.GeoDataFrame
         Adminexpress geodataset retrieved with pynsee
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -709,6 +735,7 @@ def _find_with_nominatim_geolocation(
         y="latitude",
         field_output=alias,
         cities=cities,
+        threads=threads,
     )
     look_for = look_for.drop(["latitude", "longitude", "results"], axis=1)
     return look_for
@@ -721,6 +748,7 @@ def _find_from_fuzzymatch_cities_names(
     addresses: pd.DataFrame,
     alias_dep: str,
     alias_postcode: str,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Use fuzzy matching to retrieve cities from their names to find best
@@ -742,6 +770,8 @@ def _find_from_fuzzymatch_cities_names(
         field used to store the department's code in addresses
     alias_postcode : str
         field used to store the postcode in addresses
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -752,7 +782,7 @@ def _find_from_fuzzymatch_cities_names(
     """
     init_pynsee()
 
-    df = get_cities_and_ultramarines(date="*")
+    df = get_cities_and_ultramarines(date="*", threads=threads)
     df["TITLE_SHORT"] = (
         df["TITLE_SHORT"]
         .str.upper()
@@ -769,6 +799,7 @@ def _find_from_fuzzymatch_cities_names(
         alias="dep",
         type_field="insee",
         do_set_vintage=False,
+        threads=threads,
     )
     df = df.drop_duplicates(["TITLE_SHORT", "dep"])
     df = df.reset_index(drop=False)
@@ -861,7 +892,9 @@ def _find_from_fuzzymatch_cities_names(
             results = addresses[
                 [alias_postcode, alias_dep, "city_cleaned"]
             ].merge(results, on=[alias_dep, "city_cleaned"], how="left")
-            results = _cleanup_results(results, alias_postcode=alias_postcode)
+            results = _cleanup_results(
+                results, alias_postcode=alias_postcode, threads=threads
+            )
         else:
             pass
 
@@ -869,7 +902,7 @@ def _find_from_fuzzymatch_cities_names(
             year = int(year)
         except ValueError:
             year = date.today().year
-        results = set_vintage(results, year, "CODE")
+        results = set_vintage(results, year, "CODE", threads=threads)
 
         # inner join (previous link at line 811 was of type left and
         # _cleanup_results did remove unwanted duplicates)
@@ -894,6 +927,7 @@ def _find_from_geoloc(
     y: str = "y",
     field_output: str = "insee_com",
     cities: gpd.GeoDataFrame = None,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Find cities codes from coordinates using a spatial join.
@@ -924,6 +958,8 @@ def _find_from_geoloc(
     cities : gpd.GeoDataFrame, optional
         Adminexpress geodataset retrieved with pynsee. If None, will be
         retrieved later on. None by default.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Raises
     ------
@@ -977,7 +1013,7 @@ def _find_from_geoloc(
 
     if year not in {str(date.today().year), "last"}:
         year = int(year)
-        df = set_vintage(df, year, field_output)
+        df = set_vintage(df, year, field_output, threads=threads)
     return df
 
 
@@ -1061,7 +1097,7 @@ def _query_BAN_individual_geocoder(
     components: list,
     session: Session,
     dep: str,
-    threads: int = 10,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Query the adresse API (BAN = Base Adresse Nationale) individual geocoder,
@@ -1122,11 +1158,6 @@ def _query_BAN_individual_geocoder(
 
         return features
 
-    # Without multithreading:
-    # results_api = gpd.GeoDataFrame.from_features(
-    #     np.array(addresses.full.apply(get).tolist()).flatten()
-    #     )
-
     args = addresses.full.str.replace(r"\W+", " ", regex=True).tolist()
     results = []
     with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
@@ -1173,6 +1204,7 @@ def _filter_BAN_results(
     fuzzymatch_threshold: int = 80,
     ban_score_threshold_city_known: float = 0.6,
     ban_score_threshold_city_unknown: float = 0.4,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Filters the BAN results to keep best results according to specific
@@ -1205,6 +1237,8 @@ def _filter_BAN_results(
     ban_score_threshold_city_unknown : float, optional
         The API score threshold to keep results, the city label being unknown.
         Default is 0.4.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -1214,7 +1248,12 @@ def _filter_BAN_results(
     """
     # Control results : same department
     results_api = find_departements(
-        results_api, "result_citycode", "result_dep", "insee", session
+        results_api,
+        "result_citycode",
+        "result_dep",
+        "insee",
+        session,
+        threads=threads,
     )
     ix = results_api[results_api[dep] == results_api.result_dep].index
     results_api = results_api.loc[ix]

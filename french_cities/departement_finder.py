@@ -22,6 +22,7 @@ from tqdm import tqdm
 from unidecode import unidecode
 
 from french_cities import DIR_CACHE
+from french_cities.constants import THREADS
 from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import (
     get_departements_and_ultramarines,
@@ -38,7 +39,8 @@ def _process_departements_from_postal(
     alias: str,
     session: Session = None,
     authorize_duplicates: bool = False,
-    do_set_vintage: bool = True,
+    threads: int = THREADS,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Retrieve departement's code from postoffice code. Adds the result as a new
@@ -62,9 +64,10 @@ def _process_departements_from_postal(
         acceptable for a given postcode (for instance, 13780 can result to
         either 13 or 83). If False, duplicates will be removed, hence no
         result will be available. False by default.
-    do_set_vintage : bool, option:
-        **ignored argument, set only for coherence with
-        _process_departements_from_insee_code**
+    threads : int, optional
+        Number of threads to use. Default is 10.
+    kwargs : ignored
+        **ignored argument, set only for coherence with other functions**
 
     Returns
     -------
@@ -101,7 +104,11 @@ def _process_departements_from_postal(
     )
     base = base[["#Code_commune_INSEE", "Code_postal"]]
     base = _process_departements_from_insee_code(
-        base, "#Code_commune_INSEE", alias, do_set_vintage=False
+        base,
+        "#Code_commune_INSEE",
+        alias,
+        do_set_vintage=False,
+        threads=threads,
     )
     base = base[["Code_postal", alias]].rename({"Code_postal": source}, axis=1)
     base = base.drop_duplicates(keep="first")
@@ -213,7 +220,7 @@ def _process_departements_from_postal(
         with tqdm(
             total=len(args), desc="Querying OpenDataSoft API", leave=False
         ) as pbar:
-            with ThreadPool(10) as pool:
+            with ThreadPool(threads) as pool:
                 future = pool.map(get, args)
                 results_iterator = future.result()
                 while True:
@@ -234,6 +241,7 @@ def _process_departements_from_postal(
                 source="insee",
                 alias=alias,
                 session=session,
+                threads=threads,
             )
             ix = result_cedex[result_cedex[alias].notnull()].index
             result_cedex = result_cedex.loc[
@@ -265,6 +273,7 @@ def _process_departements_from_postal(
             alias="dep",
             session=session,
             do_set_vintage=False,
+            threads=threads,
         )
         last_resort_results = last_resort_results.dropna()
     else:
@@ -304,9 +313,9 @@ def _process_departements_from_insee_code(
     df: pd.DataFrame,
     source: str,
     alias: str,
-    session: Session = None,
-    authorize_duplicates: bool = False,
     do_set_vintage: bool = True,
+    threads: int = True,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from official french cities codes (COG INSEE).
@@ -324,18 +333,16 @@ def _process_departements_from_insee_code(
         Field containing the official codes (INSEE COG)
     alias : str
         Column to store the departements' codes unto
-    session : Session, optional
-        **ignored argument, set only for coherence with
-        _process_departements_from_postal**
-    authorize_duplicates : bool, optional
-        **ignored argument, set only for coherence with
-        _process_departements_from_postal**
     do_set_vintage : bool, optional
         If True, set a vintage projection for df. If False, don't bother (will
         be faster). Should be False when df was already computed from a given
         function out of pynsee or french-cities. Should be True when used on
         almost any other dataset.
         The default is True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
+    kwargs : ignored
+        **ignored arguments, set only for coherence with other function**
 
     Returns
     -------
@@ -353,7 +360,7 @@ def _process_departements_from_insee_code(
         # Project into last vintage (to prevent mistakes for cities having
         # change of department)
         df["#CODE_INIT#"] = df[source].copy()
-        df = set_vintage(df, date.today().year, source)
+        df = set_vintage(df, date.today().year, source, threads=threads)
 
     df[alias] = df[source].str[:2]
 
@@ -375,9 +382,7 @@ def _find_departements_from_names(
     df: pd.DataFrame,
     source: str,
     alias: str,
-    session: Session = None,
-    authorize_duplicates: bool = False,
-    do_set_vintage: bool = True,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Retrieve departement's codes from their names.
@@ -391,15 +396,8 @@ def _find_departements_from_names(
     alias : str, optional
         Column to store the departements' codes unto.
         Default is "DEP_CODE"
-    session : Session, optional
-        **ignored argument, set only for coherence with
-        _process_departements_from_postal**
-    autorize_duplicates : bool, optional
-        **ignored argument, set only for coherence with
-        _process_departements_from_postal**
-    do_set_vintage : bool, optional
-        **ignored argument, set only for coherence with
-        _process_departements_from_insee_code**
+    kwargs : ignored
+        **ignored argument, set only for coherence with other functions**
 
     Returns
     -------
@@ -454,6 +452,7 @@ def find_departements(
     session: Session = None,
     authorize_duplicates: bool = False,
     do_set_vintage: bool = True,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Compute departement's codes from postal, official codes (ie. INSEE COG)
@@ -485,6 +484,8 @@ def find_departements(
         function out of pynsee or french-cities. Should be True when used on
         almost any other dataset.
         The default is True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Raises
     ------
@@ -515,5 +516,11 @@ def find_departements(
     else:
         func = _find_departements_from_names
     return func(
-        df, source, alias, session, authorize_duplicates, do_set_vintage
+        df=df,
+        source=source,
+        alias=alias,
+        session=session,
+        authorize_duplicates=authorize_duplicates,
+        do_set_vintage=do_set_vintage,
+        threads=threads,
     )

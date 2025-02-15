@@ -10,33 +10,24 @@ nav_order: 3
 
 ## Ajout des clefs API INSEE
 
-`french-cities` utilise `pynsee`, qui nécessite des cles API INSEE pour être
-fonctionnel. Deux variables d'environnement doivent impérativement être spécifiées :
+`french-cities` utilise `pynsee`. Depuis la version 0.2.0 de `pynsee` et 1.1.0 de `french-cities`,
+plus aucune clef API n'est nécessaire.
 
-* insee_key
-* insee_secret
+{: .warning }
+Comme `pynsee` est un outil beaucoup plus riche qui ne se limite pas à récupérer des
+informations communales, des alertes continueront à être affichées (absence de clef API
+SIRENE par exemple). Ce comportement est normal et n'impacte pas le fonctionnement de
+`french-cities`.
 
-Merci de se référer à 
-[la documentation de `pynsee`](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
-pour plus d'information sur les clefs API et la configuration.
-
-Pour mémoire, il est tout à fait possible de fixer des variables d'environnement
-depuis un environnement python, à l'aide des instructions suivantes :
-
-```python
-import os
-os.environ["insee_key"] = "ma-clef-applicative"
-os.environ["insee_secret"] = "ma-clef-secrete"
-```
 ## Configuration des proxies
 
 Les requêtes web fournies `french-cities` sont de trois types :
 * celles générées par `pynsee`, interrogeant les API INSEE ;
 * celles générées par `geopy`, interrogeant l'API Nominatim ;
-* celles générées en propre par `french-cities` pour interroger l'API de la 
+* celles générées en propre par `french-cities` pour interroger l'API de la
 Base Adresse Nationale et l'API Base officielle des codes postaux.
 
-Dans le cas où l'on souhaiterait utiliser des proxies professionnels 
+Dans le cas où l'on souhaiterait utiliser des proxies professionnels
 pour connexion internet, il suffit de fixer deux variables d'environnement
 supplémentaires :
 
@@ -49,3 +40,15 @@ et le fournir en argument optionnel à `french-cities`, il lui revient :
 * de continuer à fixer les variables d'environnement `https_proxy` et
 `http_proxy` (utilisées en propre par `pynsee` et `geopy` qui utilisent
 leurs propres objets session).
+
+Pour mémoire, il est tout à fait possible de fixer des variables d'environnement
+depuis un environnement python, à l'aide des instructions suivantes :
+
+```python
+import os
+os.environ["insee_key"] = "ma-clef-applicative"
+os.environ["insee_secret"] = "ma-clef-secrete"
+```
+
+On peut également utiliser des packages comme `python-dotenv` pour travailler
+à partir de fichier .env.

@@ -8,7 +8,7 @@ nav_order: 4
 ---
 # Reconnaissance des départements: `find_departements`
 
-`french-cities` peut retrouver un code département à partir de codes postaux, 
+`french-cities` peut retrouver un code département à partir de codes postaux,
 de codes communes officiels (COG/INSEE) ou de libellés en toutes lettres.
 
 ## A partir des codes postaux
@@ -21,10 +21,10 @@ Travailler à partir de codes postaux entraînera l'utilisation (par ordre de pr
 La première étape permet de faire matcher des codes postaux avec l'intégralité
 de la base nationale officielle.
 
-La seconde étape permet d'exploiter les algorithmes de la BAN en cas d'échec 
+La seconde étape permet d'exploiter les algorithmes de la BAN en cas d'échec
 sur la base nationale officielle (qui n'est mise à jour que 2 fois par an uniquement).
 
-Le cas des codes Cedex n'est que partiellement géré par la BAN et la 
+Le cas des codes Cedex n'est que partiellement géré par la BAN et la
 troisième étape permet d'exploiter les travaux de Christian Quest sur ce sujet.
 Il est à noter que le jeu de données n'a pas fait l'objet d'une mise à jour depuis mars 2017.
 
@@ -32,13 +32,14 @@ En dernier recours, une tentative est effectuée à partir des deux (ou trois po
 premiers caractères du code postal non reconnu. Si celui-ci correspond à un département
 effectif, il sera retenu.
 
-**⚠️ Attention :** il n'y a pas unicité entre un code postal donné et les départements déduits.
-Par exemple, le code postal 13780 est rattaché à des communes des départements 13 **et** 83. 
-Dans ce cas, il est possible de spécifier le comportement de `find_departements` à l'aide de
-l'argument `authorize_duplicates` :
-* si `authorize_duplicates=True`, les résultats seront dupliqués ;
-* si `authorize_duplicates=False` (valeur par défaut) les potentiels doublons seront éliminés,
-et aucun résultat ne sera fourni.
+{: .critical }
+> Il n'y a pas unicité entre un code postal donné et les départements déduits.
+> Par exemple, le code postal 13780 est rattaché à des communes des départements 13 **et** 83.
+> Dans ce cas, il est possible de spécifier le comportement de `find_departements` à l'aide de
+> l'argument `authorize_duplicates` :
+> * si `authorize_duplicates=True`, les résultats seront dupliqués ;
+> * si `authorize_duplicates=False` (valeur par défaut) les potentiels doublons seront éliminés,
+> et aucun résultat ne sera fourni.
 
 Exemple d'utilisation :
 ```python
@@ -55,9 +56,9 @@ df = pd.DataFrame(
     }
 )
 find_departements(
-    df, 
-    source="code_postal", 
-    alias="dep_A", 
+    df,
+    source="code_postal",
+    alias="dep_A",
     type_field="postcode",
 )
 
@@ -80,7 +81,7 @@ des résultats corrects pour 99% des cas), par opposition à un requêtage
 systématique aux API (processus sans erreur mais long).
 
 Il est néanmoins possible de limiter ce comportement en effectuant au préalable
-une projection des codes dans un millésime donné en activant l'argument 
+une projection des codes dans un millésime donné en activant l'argument
 `do_set_vintage=True` ; cette opération ralentira considérablement le calcul
 des codes département.
 
@@ -99,7 +100,7 @@ df = pd.DataFrame(
     }
 )
 df = find_departements(
-    df, 
+    df,
     source="code_commune",
     alias="dep_B",
     type_field="insee",
@@ -127,7 +128,7 @@ df = pd.DataFrame(
     }
 )
 df = find_departements(
-    df, 
+    df,
     source="deps_labels",
     alias="dep_C",
     type_field="label",
@@ -137,19 +138,19 @@ df = find_departements(
 ## Docstring de la fonction `find_departements`
 ```
 find_departements(
-    df: pandas.DataFrame, 
-    source: str, 
-    alias: str, 
-    type_field: str, 
-    session: requests.Session = None, 
-    authorize_duplicates: bool = False, 
+    df: pandas.DataFrame,
+    source: str,
+    alias: str,
+    type_field: str,
+    session: requests.Session = None,
+    authorize_duplicates: bool = False,
     do_set_vintage: bool = True
 ) -> pandas.DataFrame:
 
     Compute departement's codes from postal, official codes (ie. INSEE COG)
     or labels in full text.
     Adds the result as a new column to dataframe under the label 'alias'.
-    
+
     Parameters
     ----------
     df : pd.DataFrame
@@ -175,12 +176,12 @@ find_departements(
         function out of pynsee or french-cities. Should be True when used on
         almost any other dataset.
         The default is True.
-    
+
     Raises
     ------
     ValueError
         If type_field not among "postcode", "insee", "labels".
-    
+
     Returns
     -------
     df : pd.DataFrame

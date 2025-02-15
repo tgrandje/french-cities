@@ -5,23 +5,35 @@ Created on Sun Jul 21 20:27:29 2024
 Gather ultramarine territories as well as formal cities from french department.
 This allows to recognized ultramarine territories.
 """
+
 import datetime
 import logging
 import os
 
 import diskcache
 import pandas as pd
+from pebble import ThreadPool
+
 from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
+from french_cities.constants import THREADS
 
 logger = logging.getLogger(__name__)
 
 
+def set_default_date():
+    date = datetime.date(datetime.date.today().year, 1, 1)
+    date = date.strftime("%Y-%m-%d")
+    return date
+
+
 def _get_ultramarines_cities(
-    date: str = None, update: bool = None
+    date: str = None,
+    update: bool = None,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Retrieve ultramarine cities.
@@ -38,6 +50,8 @@ def _get_ultramarines_cities(
     update : bool, optional
         Locally saved data is used by default. Trigger an update with
         update=True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -51,27 +65,27 @@ def _get_ultramarines_cities(
         area,
         date,
         update,
-        # silent=True,  # to reset once pynsee's bug is fixed
+        silent=True,
     )
     if date == "*":
+        date = set_default_date()
         warning = (
             f"get_descending_area with {area=} does not support date='*': "
             f"querying for {date=} instead"
         )
         logging.warning(warning)
-    if date == "*" or not date:
-        date = datetime.date(datetime.date.today().year, 1, 1)
-        date = date.strftime("%Y-%m-%d")
+    if not date:
+        date = set_default_date()
 
     cache_ultramarine = diskcache.Cache(os.path.join(DIR_CACHE, "ultramarine"))
     try:
-        cities = cache_ultramarine[date]
-        return cities
+        if not update:
+            cities = cache_ultramarine[date]
+            return cities
     except KeyError:
         pass
-    desc = "Get descending area for ultra-marine territories"
-    cities = []
-    for code in tqdm(um["CODE"], total=len(um), desc=desc, leave=False):
+
+    def get_descending(code):
         types = ["Commune", "CirconscriptionTerritoriale", "District"]
         while types:
             try:
@@ -81,16 +95,33 @@ def _get_ultramarines_cities(
                     date,
                     update=update,
                     type=types.pop(0),
+                    silent=True,
                 )
+                if this_territory.empty:
+                    continue
             except RequestException:
                 continue
-            except IndexError:
-                logger.info(
-                    "No cities found for ultramarine territory %s", code
-                )
             else:
-                cities.append(this_territory)
                 break
+
+        if this_territory.empty:
+            logger.info("No cities found for ultramarine territory %s", code)
+        return this_territory
+
+    def filter_no_data(record):
+        return record.msg != "No data found !"
+
+    pynsee_log = logging.getLogger("pynsee.localdata.get_descending_area")
+    pynsee_log.addFilter(filter_no_data)
+
+    desc = "Get descending area for ultra-marine territories"
+    with ThreadPool(threads) as pool:
+        # note: there's a rate limiter built-in pynsee, so this is safe
+        future = pool.map(get_descending, um["CODE"])
+        results = future.result()
+        cities = list(tqdm(results, total=len(um), desc=desc, leave=False))
+
+    pynsee_log.removeFilter(filter_no_data)
 
     cities = pd.concat(cities)
     cities = cities.rename(
@@ -112,7 +143,7 @@ def _get_ultramarines_cities(
 
 
 def get_cities_and_ultramarines(
-    date: str = None, update: bool = None
+    date: str = None, update: bool = None, threads: int = THREADS
 ) -> pd.DataFrame:
     """
     Retrieve a unified DataFrame of cities (from departements and ultramarine
@@ -126,6 +157,8 @@ def get_cities_and_ultramarines(
     update : bool, optional
         Locally saved data is used by default. Trigger an update with
         update=True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -134,8 +167,8 @@ def get_cities_and_ultramarines(
 
     """
 
-    ultramarine = _get_ultramarines_cities(date, update)
-    cities = get_area_list("communes", date, update)
+    ultramarine = _get_ultramarines_cities(date, update, threads=threads)
+    cities = get_area_list("communes", date, update, silent=True)
     full = pd.concat([ultramarine, cities], ignore_index=True)
     return full
 
@@ -159,10 +192,12 @@ def get_departements_and_ultramarines(date=None, update=None):
     full : pd.DataFrame
 
     """
-    ultramarine = get_area_list("collectivitesDOutreMer", date, update)
+    ultramarine = get_area_list(
+        "collectivitesDOutreMer", date, update, silent=True
+    )
     ultramarine = ultramarine.sort_values(["CODE", "DATE_CREATION"])
 
-    deps = get_area_list("departements", date, update)
+    deps = get_area_list("departements", date, update, silent=True)
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
