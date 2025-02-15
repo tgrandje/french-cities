@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import lru_cache
+import logging
 import os
 
 import diskcache
@@ -41,4 +42,30 @@ def init_pynsee():
     keys = ["http_proxy", "https_proxy"]
     kwargs = {x: os.environ[x] for x in keys if x in os.environ}
     kwargs["sirene_key"] = None
+
+    # deactivate critical log entries from pynsee, this is intended behaviour
+    # not to have SIRENE API crendentials in that context
+    def filter_no_credential(record):
+        return (
+            not record.msg.startswith(
+                "INSEE API credentials have not been found"
+            )
+            and not record.msg.startswith(
+                "Invalid credentials, the following APIs returned error codes"
+            )
+            and not record.msg.startswith(
+                "Remember to subscribe to SIRENE API"
+            )
+        )
+
+    # Note: deactivate pynsee log to substitute by a more accurate
+    pynsee_logs = "_get_credentials", "requests_session", "init_connection"
+    for log in pynsee_logs:
+        pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+        pynsee_log.addFilter(filter_no_credential)
+
     init_conn(**kwargs)
+
+    for log in pynsee_logs:
+        pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+        pynsee_log.removeFilter(filter_no_credential)

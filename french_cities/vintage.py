@@ -12,6 +12,7 @@ import logging
 
 import diskcache
 import pandas as pd
+from pebble import ThreadPool
 
 from pynsee.localdata import get_area_list
 from pynsee.localdata import get_ascending_area
@@ -19,6 +20,7 @@ from pynsee.localdata import get_area_projection
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
+from french_cities.constants import THREADS
 from french_cities.utils import init_pynsee
 from french_cities.ultramarine_pseudo_cog import get_cities_and_ultramarines
 
@@ -129,7 +131,12 @@ FIXED_ULTRAMARINE_CODES = {
 
 
 @cache_projection.memoize(tag="city_projection")
-def get_city(x: str, starting_dates: list, projection_date: str) -> str:
+def get_city(
+    x: str,
+    starting_dates: list,
+    projection_date: str,
+    log_entries: bool = True,
+) -> str:
     """
     Try to get a city's valid official code at projection_date.
 
@@ -143,11 +150,28 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
     projection_date : str
         Date to project the obsolete code into. Should be in the "YYYY-MM-DD"
         format.
+    log_entries : bool, optional
+        If True, will display log error if no projection has been found. The
+        default is True.
 
     Returns
     -------
     code
         Valid insee code (5 digits)
+
+    Example
+    -------
+    >>> get_city(
+        "59298",
+        starting_dates=[
+            "1943-01-01",
+            "1960-01-01",
+            "1980-01-01",
+            "2000-01-01",
+            "2010-01-01",
+        ],
+        projection_date="2024-01-01"
+        )
 
     """
     try:
@@ -155,13 +179,10 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
     except KeyError:
         pass
 
-    # TODO : parallélisation ? Pas sûr...
-    for date_init in starting_dates:
+    starting_dates = sorted(starting_dates)
 
-        # Hack to deactivate standard error log entries by pynsee which are
-        # concieved with a valid date in mind.
-        previous_level = logging.root.manager.disable
-        logging.disable(logging.ERROR)
+    # Note: do not parallelize this, starting_dates' order has importance
+    for date_init in starting_dates:
         df = get_area_projection(
             code=x,
             area="commune",
@@ -169,22 +190,19 @@ def get_city(x: str, starting_dates: list, projection_date: str) -> str:
             dateProjection=projection_date,
             silent=True,
         )
-        try:
-            df = df.drop("DATE_DELETION", axis=1)
-        except (KeyError, AttributeError):
-            pass
-        logging.disable(previous_level)
-
-        if df is not None:
+        if not df.empty:
             break
     try:
         return df.at[0, "code"]
     except (ValueError, AttributeError, KeyError):
-        logger.error("No projection found for city %s", x)
+        if log_entries:
+            logger.error("No projection found for city %s", x)
         return None
 
 
-def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
+def _get_cities_year_full(
+    year: int, look_for: set = None, threads: int = THREADS
+) -> pd.DataFrame:
     """
     Download desired vintage of french official geographic code for cities
     and municipal districts from INSEE API; the obtained DataFrame contains
@@ -199,6 +217,8 @@ def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
     look_for : set, optional
         List of codes we are trying to project in the desired vintage.
         The default is None (will try to reach every available code).
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -218,12 +238,18 @@ def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
     34989  75120     75056
 
     """
-    cities = _get_cities_year(year)
+    cities = _get_cities_year(year, threads=threads)
     data = [
         cities.assign(PARENT=cities["CODE"]),
-        _get_subareas_year("arrondissementsMunicipaux", year, look_for),
-        _get_subareas_year("communesAssociees", year, look_for),
-        _get_subareas_year("communesDeleguees", year, look_for),
+        _get_subareas_year(
+            "arrondissementsMunicipaux", year, look_for, threads=threads
+        ),
+        _get_subareas_year(
+            "communesAssociees", year, look_for, threads=threads
+        ),
+        _get_subareas_year(
+            "communesDeleguees", year, look_for, threads=threads
+        ),
     ]
     cities = pd.concat(data, ignore_index=True)
     ix = cities[cities.CODE.isin(look_for)].index
@@ -236,7 +262,7 @@ def _get_cities_year_full(year: int, look_for: set = None) -> pd.DataFrame:
     return cities
 
 
-def _get_cities_year(year: int) -> pd.DataFrame:
+def _get_cities_year(year: int, threads: int = THREADS) -> pd.DataFrame:
     """
     Download desired vintage of french official geographic code for cities
     from INSEE API; municipal districts are excluded by this API.
@@ -245,6 +271,8 @@ def _get_cities_year(year: int) -> pd.DataFrame:
     ----------
     year : int
         Desired vintage
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -258,7 +286,7 @@ def _get_cities_year(year: int) -> pd.DataFrame:
     4  01006
 
     """
-    cog = get_cities_and_ultramarines(date=f"{year}-01-01")
+    cog = get_cities_and_ultramarines(date=f"{year}-01-01", threads=threads)
     try:
         cog = cog.drop("DATE_DELETION", axis=1)
     except KeyError:
@@ -278,7 +306,7 @@ def _get_cities_year(year: int) -> pd.DataFrame:
 
 
 def _get_parents_from_serie(
-    type_: str, codes: list, year: int
+    type_: str, codes: list, year: int, threads: int = THREADS
 ) -> pd.DataFrame:
     """
     Get territories' parents codes using INSEE API. The output will be a
@@ -296,6 +324,8 @@ def _get_parents_from_serie(
         any iterable of territories' official codes of type type_
     year : int
         Desired vintage
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -309,26 +339,33 @@ def _get_parents_from_serie(
 
     """
     parents = []
-    func = partial(
-        get_ascending_area,
-        area=type_,
-        date=f"{year}-01-01",
-        type="commune",
-        silent=True,
-    )
 
-    # TODO : parallélisation
-    for code in tqdm(codes, desc="get parent from insee", leave=False):
-        parents.append(
-            {"CODE": code, "PARENT": func(code=code).loc[0, "code"]}
+    def func(x):
+        ret = get_ascending_area(
+            code=x,
+            area=type_,
+            date=f"{year}-01-01",
+            type="commune",
+            silent=True,
         )
+        return {"CODE": x, "PARENT": ret.loc[0, "code"]}
+
+    desc = "Get parent from insee"
+    with ThreadPool(threads) as pool:
+        # note: there's a rate limiter built-in pynsee, so this is safe
+        future = pool.map(func, codes)
+        results = future.result()
+        parents = list(tqdm(results, total=len(codes), desc=desc, leave=False))
 
     parents = pd.DataFrame(parents)
     return parents
 
 
 def _get_subareas_year(
-    type_: str, year: int, look_for: set = None
+    type_: str,
+    year: int,
+    look_for: set = None,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Download desired vintage of french official geographic code for "subcities"
@@ -345,6 +382,8 @@ def _get_subareas_year(
     look_for : set, optional
         List of codes we are trying to project in the desired vintage.
         The default is None (will try to reach every available code).
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -384,7 +423,9 @@ def _get_subareas_year(
         "communesDeleguees": "communeDeleguee",
     }
     type_ = single_area[type_]
-    parents = _get_parents_from_serie(type_, subareas.CODE.unique(), year)
+    parents = _get_parents_from_serie(
+        type_, subareas.CODE.unique(), year, threads=threads
+    )
     subareas = subareas.merge(parents, on="CODE", how="left")
 
     return subareas
@@ -451,7 +492,9 @@ def ultra_marine_territories_vintage(code: str, projection_date: str) -> str:
         raise KeyError("Not a city from ultramarine collectivities") from exc
 
 
-def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
+def set_vintage(
+    df: pd.DataFrame, year: int, field: str, threads: int = THREADS
+) -> pd.DataFrame:
     """
     Project (approximatively) the cities codes of a dataframe into a desired
     vintage.
@@ -472,11 +515,33 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
         Year to project the dataframe's city codes into
     field : str
         Field (column) of dataframe containing the city code
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
     pd.DataFrame
         Projected DataFrame
+
+    Example
+    -------
+    >>> import pandas as pd
+    >>> from french_cities import set_vintage
+
+    >>> df = pd.DataFrame(
+        [
+            ["07180", "Fusion"],
+            ["02077", "Commune déléguée"],
+            ["02564", "Commune nouvelle"],
+            ["75101", "Arrondissement municipal"],
+            ["59298", "Commune associée"],
+            ["99999", "Code erroné"],
+            ["14472", "Oudon"],
+        ],
+        columns=["A", "Test"],
+        index=["A", "B", "C", "D", 1, 2, 3],
+    )
+    >>> df = set_vintage(df, 2023, field="A")
 
     """
 
@@ -493,7 +558,7 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
     if uniques.empty:
         return df
 
-    cities = _get_cities_year_full(year, set(uniques[field]))
+    cities = _get_cities_year_full(year, set(uniques[field]), threads=threads)
 
     # Uptodate cities (cities, municipal districts, delegated cities, ...)
     uniques = uniques.merge(cities, left_on=field, right_on="CODE", how="left")
@@ -513,21 +578,37 @@ def set_vintage(df: pd.DataFrame, year: int, field: str) -> pd.DataFrame:
         get_city,
         starting_dates=starting_dates,
         projection_date=f"{year}-01-01",
+        log_entries=False,
     )
+
+    def filter_no_data(record):
+        return not record.msg.startswith(
+            "No data found for projection of area"
+        )
+
+    # Note: deactivate pynsee log to substitute by a more accurate
+    pynsee_log = logging.getLogger("pynsee.localdata.get_area_projection")
+    pynsee_log.addFilter(filter_no_data)
 
     ix = uniques[uniques.PROJECTED.isnull()].index
     tqdm.pandas(desc="Looking for projections from past", leave=False)
-    estimated_time = len(ix) / 30
-    if estimated_time > 1:
-        logger.warning(
-            "Due to INSEE's API querying rate, the following process may "
-            "take up to %s min "
-            "(estimation without cache processing)...",
-            round(estimated_time) + 1,
-        )
-    uniques.loc[ix, "PROJECTED"] = uniques.loc[ix, field].progress_apply(
-        partial_get_city
-    )
+
+    desc = "Looking for projections from past"
+    with ThreadPool(threads) as pool:
+        # note: there's a rate limiter built-in pynsee, so this is safe
+        future = pool.map(partial_get_city, uniques.loc[ix, field].tolist())
+        results = future.result()
+        projected = list(tqdm(results, total=len(ix), desc=desc, leave=False))
+        uniques.loc[ix, "PROJECTED"] = projected
+
+    pynsee_log.removeFilter(filter_no_data)
+
+    ix = uniques[uniques.PROJECTED.isnull()].index
+
+    def log_after_tqdm(x):
+        logger.error("No projection found for city %s", x)
+
+    uniques.loc[ix, field].apply(log_after_tqdm)
 
     uniques = dict(uniques[[field, "PROJECTED"]].values)
 

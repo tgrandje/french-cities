@@ -12,12 +12,14 @@ import os
 
 import diskcache
 import pandas as pd
+from pebble import ThreadPool
 
 from pynsee.localdata import get_area_list, get_descending_area
 from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
+from french_cities.constants import THREADS
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,9 @@ def set_default_date():
 
 
 def _get_ultramarines_cities(
-    date: str = None, update: bool = None
+    date: str = None,
+    update: bool = None,
+    threads: int = THREADS,
 ) -> pd.DataFrame:
     """
     Retrieve ultramarine cities.
@@ -46,6 +50,8 @@ def _get_ultramarines_cities(
     update : bool, optional
         Locally saved data is used by default. Trigger an update with
         update=True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -76,14 +82,10 @@ def _get_ultramarines_cities(
         if not update:
             cities = cache_ultramarine[date]
             return cities
-        pass
     except KeyError:
         pass
 
-    # TODO : parallélisation
-    desc = "Get descending area for ultra-marine territories"
-    cities = []
-    for code in tqdm(um["CODE"], total=len(um), desc=desc, leave=False):
+    def get_descending(code):
         types = ["Commune", "CirconscriptionTerritoriale", "District"]
         while types:
             try:
@@ -96,16 +98,30 @@ def _get_ultramarines_cities(
                     silent=True,
                 )
                 if this_territory.empty:
-                    raise IndexError
+                    continue
             except RequestException:
-                continue
-            except IndexError:
                 continue
             else:
                 break
-        if this_territory is None or this_territory.empty:
+
+        if this_territory.empty:
             logger.info("No cities found for ultramarine territory %s", code)
-        cities.append(this_territory)
+        return this_territory
+
+    def filter_no_data(record):
+        return record.msg != "No data found !"
+
+    pynsee_log = logging.getLogger("pynsee.localdata.get_descending_area")
+    pynsee_log.addFilter(filter_no_data)
+
+    desc = "Get descending area for ultra-marine territories"
+    with ThreadPool(threads) as pool:
+        # note: there's a rate limiter built-in pynsee, so this is safe
+        future = pool.map(get_descending, um["CODE"])
+        results = future.result()
+        cities = list(tqdm(results, total=len(um), desc=desc, leave=False))
+
+    pynsee_log.removeFilter(filter_no_data)
 
     cities = pd.concat(cities)
     cities = cities.rename(
@@ -127,7 +143,7 @@ def _get_ultramarines_cities(
 
 
 def get_cities_and_ultramarines(
-    date: str = None, update: bool = None
+    date: str = None, update: bool = None, threads: int = THREADS
 ) -> pd.DataFrame:
     """
     Retrieve a unified DataFrame of cities (from departements and ultramarine
@@ -141,6 +157,8 @@ def get_cities_and_ultramarines(
     update : bool, optional
         Locally saved data is used by default. Trigger an update with
         update=True.
+    threads : int, optional
+        Number of threads to use. Default is 10.
 
     Returns
     -------
@@ -149,7 +167,7 @@ def get_cities_and_ultramarines(
 
     """
 
-    ultramarine = _get_ultramarines_cities(date, update)
+    ultramarine = _get_ultramarines_cities(date, update, threads=threads)
     cities = get_area_list("communes", date, update, silent=True)
     full = pd.concat([ultramarine, cities], ignore_index=True)
     return full
@@ -183,13 +201,3 @@ def get_departements_and_ultramarines(date=None, update=None):
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
     return full
-
-
-if __name__ == "__main__":
-    from french_cities.utils import init_pynsee
-
-    # os.environ["http_proxy"] = ""
-    # os.environ["https_proxy"] = ""
-    init_pynsee()
-    df = _get_ultramarines_cities("2023-01-01", update=True)
-    print(df)
