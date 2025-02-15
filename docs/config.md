@@ -15,9 +15,9 @@ plus aucune clef API n'est nécessaire.
 
 {: .warning }
 Comme `pynsee` est un outil beaucoup plus riche qui ne se limite pas à récupérer des
-informations communales, des alertes continueront à être affichées (absence de clef API
-SIRENE par exemple). Ce comportement est normal et n'impacte pas le fonctionnement de
-`french-cities`.
+informations communales, il affichera par défaut des alertes (absence de clef API SIRENE notamment).
+Ces alertes devraient normalement être masquées par `french-cities` : si ce n'était pas le
+cas, merci d'ouvrir une issue.
 
 ## Configuration des proxies
 
