@@ -23,7 +23,7 @@ from unidecode import unidecode
 
 from french_cities import DIR_CACHE
 from french_cities.constants import THREADS
-from french_cities.utils import init_pynsee
+from french_cities.utils import init_pynsee, silence_sirene_logs
 from french_cities.ultramarine_pseudo_cog import (
     get_departements_and_ultramarines,
 )
@@ -444,6 +444,7 @@ def _find_departements_from_names(
     return df
 
 
+@silence_sirene_logs
 def find_departements(
     df: pd.DataFrame,
     source: str,

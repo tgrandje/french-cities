@@ -43,8 +43,9 @@ Do you have any data:
 an API key is **not necessary anymore**.
 
 Note that as `pynsee` is far more than just retrieving information on cities:
-it may alert you that you are missing a SIRENE API key.
-This is perfectly normal and has **no impact** on `french-cities` whatsoever.
+by default, it will alert you on missing SIRENE API keys.
+`french-cities` *should* silence those alerts (as they are not relevant to
+the present usecases). If those alerts popup, please get in touch.
 
 ## Working behind a corporate proxy
 

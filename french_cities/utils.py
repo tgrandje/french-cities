@@ -13,6 +13,51 @@ from pynsee.utils._clean_insee_folder import _clean_insee_folder
 from french_cities import DIR_CACHE
 
 
+def silence_sirene_logs(func):
+    """
+    decorator deactivating critical/error/warning log entries from pynsee on
+    missing SIRENE credentials:  this is intended behaviour in french-cities
+    context
+    """
+
+    def filter_no_credential_or_no_results(record):
+        return (
+            # no credentials:
+            not record.msg.startswith(
+                "INSEE API credentials have not been found"
+            )
+            and not record.msg.startswith(
+                "Invalid credentials, the following APIs returned error codes"
+            )
+            and not record.msg.startswith(
+                "Remember to subscribe to SIRENE API"
+            )
+            # no results, but switch with a more accurate log entry in
+            # french-cities context:
+            and record.msg != "No data found !"
+            and not not record.msg.startswith(
+                "No data found for projection of area"
+            )
+        )
+
+    def wrapper(*args, **kwargs):
+        # Note: deactivate pynsee log to substitute by a more accurate
+        pynsee_logs = "_get_credentials", "requests_session", "init_connection"
+        for log in pynsee_logs:
+            pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+            pynsee_log.addFilter(filter_no_credential_or_no_results)
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            raise
+        finally:
+            for log in pynsee_logs:
+                pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+                pynsee_log.removeFilter(filter_no_credential_or_no_results)
+
+    return wrapper
+
+
 def clear_all_cache():
     "Clear french-cities cache first, then pynsee's"
 
@@ -34,6 +79,7 @@ def clear_all_cache():
     _clean_insee_folder()
 
 
+@silence_sirene_logs
 @lru_cache(maxsize=None)
 def init_pynsee():
     """
@@ -43,29 +89,4 @@ def init_pynsee():
     kwargs = {x: os.environ[x] for x in keys if x in os.environ}
     kwargs["sirene_key"] = None
 
-    # deactivate critical log entries from pynsee, this is intended behaviour
-    # not to have SIRENE API crendentials in that context
-    def filter_no_credential(record):
-        return (
-            not record.msg.startswith(
-                "INSEE API credentials have not been found"
-            )
-            and not record.msg.startswith(
-                "Invalid credentials, the following APIs returned error codes"
-            )
-            and not record.msg.startswith(
-                "Remember to subscribe to SIRENE API"
-            )
-        )
-
-    # Note: deactivate pynsee log to substitute by a more accurate
-    pynsee_logs = "_get_credentials", "requests_session", "init_connection"
-    for log in pynsee_logs:
-        pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
-        pynsee_log.addFilter(filter_no_credential)
-
     init_conn(**kwargs)
-
-    for log in pynsee_logs:
-        pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
-        pynsee_log.removeFilter(filter_no_credential)
