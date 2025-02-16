@@ -3,10 +3,8 @@
 Created on Tue Jul 11 09:20:26 2023
 """
 from unittest import TestCase
-from unittest.mock import patch
 import pandas as pd
 import numpy as np
-from requests import session
 
 from french_cities.city_finder import find_city
 
@@ -85,11 +83,11 @@ input_df = pd.DataFrame(
         {
             "x": np.nan,
             "y": np.nan,
-            "location": "Commune formatté comme Legifrance",
+            "location": "Commune formatté Legifrance et erreur de code postal",
             "dep": "02",
             "city": "Sourd (Le)",
             "address": np.nan,
-            "postcode": np.nan,
+            "postcode": "2140",
             "target": "02731",
         },
         {
@@ -207,6 +205,26 @@ output_df = find_city(
     session=MockedSession(),
 )
 
+output_df2 = find_city(
+    pd.DataFrame(
+        [
+            {
+                "x": 2.294694,
+                "y": 48.858093,
+                "location": "Tour Eiffel",
+                "city": "Paris",
+                "address": "5 Avenue Anatole France",
+                "postcode": "75007",
+                "target": "75056",
+            }
+        ]
+    ),
+    year="2023",
+    epsg=4326,
+    use_nominatim_backend=True,
+    dep=False,
+)
+
 
 class test_find_city(TestCase):
 
@@ -229,3 +247,43 @@ class test_find_city(TestCase):
 
     def test_content(self):
         assert (output_df["insee_com"] == output_df["target"]).all()
+
+    def test_live(self):
+        assert (output_df2["insee_com"] == output_df2["target"]).all()
+
+    def test_raises_wrong_vintage_input(self):
+
+        df = pd.DataFrame(
+            [
+                {
+                    "x": 2.294694,
+                    "y": 48.858093,
+                    "location": "Tour Eiffel",
+                    "city": "Paris",
+                    "address": "5 Avenue Anatole France",
+                    "postcode": "75007",
+                    "target": "75056",
+                }
+            ]
+        )
+
+        self.assertRaises(ValueError, find_city, df=df, year="2023-01-01")
+
+    def test_raises_not_enough_fields(self):
+        """
+        check that missing EPSG results to x/y not being used and that not
+        enough data results to a ValueError
+        """
+
+        df = pd.DataFrame(
+            [
+                {
+                    "location": "Tour Eiffel",
+                    "city": "Paris",
+                    "x": 2.294694,
+                    "y": 48.858093,
+                }
+            ]
+        )
+
+        self.assertRaises(ValueError, find_city, df=df, epsg=None)

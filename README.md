@@ -1,9 +1,12 @@
 # french-cities
 
-![flake8 checks](./badges/flake8-badge.svg)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![Test Coverage](./badges/coverage-badge.svg)
+![PyPI - Version](https://img.shields.io/pypi/v/french-cities)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/french-cities)](https://pypi.python.org/pypi/french-cities/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![flake8 checks](https://raw.githubusercontent.com/tgrandje/french-cities/refs/heads/main/badges/flake8-badge.svg)
+![Test Coverage](https://raw.githubusercontent.com/tgrandje/french-cities/refs/heads/main/badges/coverage-badge.svg)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/tgrandje/french-cities)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/tgrandje/french-cities/latest)
 ![Monthly Downloads](https://img.shields.io/pypi/dm/french-cities)
 ![Total Downloads](https://img.shields.io/pepy/dt/french-cities)
 

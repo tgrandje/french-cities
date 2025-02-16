@@ -15,7 +15,6 @@ import pandas as pd
 from pebble import ThreadPool
 
 from pynsee.localdata import get_area_list, get_descending_area
-from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from french_cities import DIR_CACHE
@@ -88,21 +87,17 @@ def _get_ultramarines_cities(
     def get_descending(code):
         types = ["Commune", "CirconscriptionTerritoriale", "District"]
         while types:
-            try:
-                this_territory = get_descending_area(
-                    "collectiviteDOutreMer",
-                    code,
-                    date,
-                    update=update,
-                    type=types.pop(0),
-                    silent=True,
-                )
-                if this_territory.empty:
-                    continue
-            except RequestException:
+            this_territory = get_descending_area(
+                "collectiviteDOutreMer",
+                code,
+                date,
+                update=update,
+                type=types.pop(0),
+                silent=True,
+            )
+            if this_territory.empty:
                 continue
-            else:
-                break
+            break
 
         if this_territory.empty:
             logger.info("No cities found for ultramarine territory %s", code)
