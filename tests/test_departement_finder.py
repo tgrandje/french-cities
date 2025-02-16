@@ -35,6 +35,15 @@ input_df2 = pd.DataFrame(
     }
 )
 
+input_df3 = pd.DataFrame(
+    {
+        "code_postal": ["02999"],
+        "code_commune": ["02999"],
+        "communes": ["Laon"],
+        "deps": ["02"],
+    }
+)
+
 
 class MockedHexasmalResponse:
     ok = True
@@ -99,3 +108,15 @@ class test_find_departements(TestCase):
     def test_from_name(self):
         test = find_departements(input_df2, "deps", "DEP_CODE", "label")
         assert (test["DEP_CODE"] == test["codes"]).all()
+
+    def test_live_without_set_session(self):
+        test = find_departements(
+            input_df, "code_postal", "dep_test", "postcode"
+        )
+        assert (test["dep_test"] == test["deps"]).all()
+
+    def test_last_resort(self):
+        test = find_departements(
+            input_df3, "code_postal", "dep_test", "postcode"
+        )
+        assert (test["dep_test"] == test["deps"]).all()

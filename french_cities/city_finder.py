@@ -287,17 +287,19 @@ def find_city(
             ) from exc
 
     columns = set(df.columns)
-    necessary1 = {postcode, city}
-    necessary2 = {dep, city}
-    necessary3 = {x, y}
-    if not any(
-        len(conf - columns) == 0
-        for conf in (necessary1, necessary2, necessary3)
-    ):
-        msg = (
-            f"All columns among {necessary1}, {necessary2} OR {necessary3} "
-            "are necessary"
+    configurations = [
+        {postcode, city},
+        {dep, city},
+    ]
+    if epsg:
+        configurations.append({x, y})
+    elif len({x, y} - columns) == 0:
+        logger.warning(
+            "x and y columns where found, but a valid EPSG projection was "
+            "not set: geolocation will not be performed"
         )
+    if not any(len(conf - columns) == 0 for conf in configurations):
+        msg = f"All columns among {configurations} are necessary"
         raise ValueError(msg)
 
     if not session:
@@ -311,14 +313,8 @@ def find_city(
         proxies["https"] = os.environ.get("https_proxy", None)
         session.proxies.update(proxies)
 
-    if len(necessary3 - columns) == 0 and not epsg:
-        logger.warning(
-            "x and y columns where found, but a valid EPSG projection was not "
-            "set: geolocation will not be performed"
-        )
-
     # User geolocation first
-    elif len(necessary3 - columns) == 0 and epsg:
+    if len({x, y} - columns) == 0 and epsg:
         # On peut travailler à partir de la géoloc
         df = _find_from_geoloc(
             epsg, df, year, x, y, field_output, threads=threads

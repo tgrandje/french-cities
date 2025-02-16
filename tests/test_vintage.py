@@ -98,9 +98,15 @@ input_set_vintage = pd.DataFrame(
         ["59298", "Commune associée"],
         ["99999", "Code erroné"],
         ["14472", "Oudon"],
+        ["98799", "La Passion <= 2007"],
+        ["98901", "La Passion > 2008"],
+        ["97123", "Saint-Barthélemy <= 2007"],
+        ["97701", "Saint-Barthélemy > 2008"],
+        ["97127", "Saint-Martin <= 2007"],
+        ["97801", "Saint-Martin > 2008"],
     ],
     columns=["A", "Test"],
-    index=["A", "B", "C", "D", 1, 2, 3],
+    index=["A", "B", "C", "D", 1, 2, 3, 4, 5, 6, 7, 8, 9],
 )
 ouptut_set_vintage = set_vintage(input_set_vintage, 2023, field="A")
 
@@ -127,4 +133,10 @@ class test_set_vintage(TestCase):
             1: "59350",
             2: None,
             3: "14654",
+            4: "98901",
+            5: "98901",
+            6: "97701",
+            7: "97701",
+            8: "97801",
+            9: "97801",
         }
