@@ -20,7 +20,7 @@
 
 title: french-cities
 email: tgrandje@gmail.com
-description: 
+description:
   en: >- # this means to ignore newlines until "baseurl:"
     Documentation of python package `french-cities`, used as a bundle
     utilitary on managing french cities in datasets.
@@ -66,6 +66,14 @@ parallel_localization: true
 logo: "/assets/img/french-cities.jpg"
 favicon_ico: "/assets/img/favicon-french-cities.ico"
 color_scheme: dark
+
+callouts:
+  warning:
+    title: 💡 Remarque
+    color: blue
+  critical:
+    title: ⚠️ Attention
+    color: red
 
 
 sass:

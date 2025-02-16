@@ -1,16 +1,15 @@
 # french-cities
-This repo contains the documentation of the python french-cities package, a 
-package aimed at improving the referencing of municipalities in French 🇫🇷 
+
+![flake8 checks](./badges/flake8-badge.svg)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![Test Coverage](./badges/coverage-badge.svg)
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/french-cities)](https://pypi.python.org/pypi/french-cities/)
+![Monthly Downloads](https://img.shields.io/pypi/dm/french-cities)
+![Total Downloads](https://img.shields.io/pepy/dt/french-cities)
+
+This repo contains the documentation of the python french-cities package, a
+package aimed at improving the referencing of municipalities in French 🇫🇷
 datasets.
-
-# Update
-
-1.0.3 is a new release of `french-cities` and is meant to fix some bugs in the
-current version. It is still working with the (now) ancient API portal, before
-it's revocation next month.
-
-A new version will be released soon to work with the new portal (including a much better
-query rate authorization).
 
 # Documentation
 
@@ -19,7 +18,7 @@ A full documentation with usecases is available at
 Obviously, it is only available in french as yet.
 Any help is welcome to build a multi-lingual documentation website.
 
-Until then, a basic english documentation will stay available in the present README. 
+Until then, a basic english documentation will stay available in the present README.
 
 # Why french-cities?
 
@@ -27,8 +26,8 @@ Do you have any data:
 * which municipal locations are provided through approximate addresses, or via geographical 🗺️ coordinates?
 * which municipalities are referenced by their postal codes and their labels 😮?
 * which departments are written in full text 🔡?
-* which spelling are dubious (for instance, torturing the _<del>Loire</del> Loir-et-Cher_) or obsolete 
-(for instance, referencing _Templeuve_, a city renamed as _Templeuve-en-Pévèle_ since 2015)? 
+* which spelling are dubious (for instance, torturing the _<del>Loire</del> Loir-et-Cher_) or obsolete
+(for instance, referencing _Templeuve_, a city renamed as _Templeuve-en-Pévèle_ since 2015)?
 * or compiled over the years and where cities' codes are a patchwork of multiple 🤯 vintages?
 
 **Then 'french-cities' is for you 🫵!**
@@ -40,31 +39,43 @@ Do you have any data:
 # Configuration
 
 ## Setting INSEE's API keys
-`french-cities` uses `pynsee` under the hood. For it to work, you need to set
-the credentials up. You can set up to four environment variables:
-* insee_key
-* insee_secret, 
+`french-cities` uses `pynsee` under the hood. Starting from `pynsee 0.2.0` (and `french-cities 1.1.0`),
+an API key is **not necessary anymore**.
+
+Note that as `pynsee` is far more than just retrieving information on cities:
+by default, it will alert you on missing SIRENE API keys.
+`french-cities` *should* silence those alerts (as they are not relevant to
+the present usecases). If those alerts popup, please get in touch.
+
+## Working behind a corporate proxy
+
+Please set those (usual) environment variables to allow working behind a proxy:
 * http_proxy (if accessing web behind a corporate proxy)
 * https_proxy (if accessing web behind a corporate proxy)
 
-Please refer to [`pynsee`'s documentation](https://pynsee.readthedocs.io/en/latest/api_subscription.html)
-to help configure the API's access.
+If you can't set those variables directly, you can either have a look at python-dotenv
+or set those directly using python:
 
-Note that setting environment variable for proxy will set it for both `pynsee`
-and `geopy`.
+```python
+import os
+os.environ["https_proxy"] = "http://my_proxy_server:port"
+os.environ["http_proxy"] = "http://my_proxy_server:port"
+```
 
 ## Session management
-Note that `pynsee` and `geopy` use their own web session. Every Session object 
-you will pass to `french-cities` will **NOT** be shared with `pynsee` or `geopy`. 
-This explains the possibility to pass a session as an argument to `french-cities` 
-functions, even if you had to configure the corporate proxy through environment 
-variables for `pynsee` and `geopy`.
+Note that `pynsee` and `geopy` (both used under the hood) use their own web session.
+Every Session object you will pass to `french-cities` will neither be shared with
+`pynsee` nor `geopy`.
+
+This explains the possibility to pass a session as an argument to `french-cities`
+functions, even if you had to configure the corporate proxy through environment
+variables (those will also impact `pynsee` and `geopy`).
 
 ## Basic usage
 
 ### Retrieve departements' codes
 `french-cities` can retrieve departement's codes from postal codes, official
-(COG/INSEE) codes or labels. 
+(COG/INSEE) codes or labels.
 
 Working from postal codes will make use of the BAN (Base Adresse Nationale)
 and should return correct results. The case of "Cedex" codes is only partially
@@ -75,8 +86,8 @@ the user of the present package should check the current API's legal terms
 directly on OpenDataSoft's website.
 
 Working from official codes may sometime give empty results (when working on an old
-dataset and with cities which have changed of departments, which is rarely seen). 
-This is deliberate: it will mostly use the first characters of the cities' codes 
+dataset and with cities which have changed of departments, which is rarely seen).
+This is deliberate: it will mostly use the first characters of the cities' codes
 (which is a fast process and 99% accurate) instead of using an API (which is
 lengthy though foolproof).
 
@@ -112,8 +123,8 @@ the algorithm):
 * 'address', 'postcode' and 'city'
 * 'department' and 'city'
 
-Note that the algorithm can (and will) make errors using xy coordinates on a 
-older vintage (ie different from the current one) in the case of historic 
+Note that the algorithm can (and will) make errors using xy coordinates on a
+older vintage (ie different from the current one) in the case of historic
 splitting of cities (the geographic files are not vintaged yet).
 
 The lexical (postcode, city, address, departement) recognition is based on a
@@ -174,15 +185,15 @@ df = find_city(df, epsg=4326)
 print(df)
 ```
 
-For a complete documentation on `find_city`, please type 
+For a complete documentation on `find_city`, please type
 `help(find_city)`.
 
-**Note** : to activate `geopy` (Nominatim API from OpenStreeMap) usage in last 
+**Note** : to activate `geopy` (Nominatim API from OpenStreeMap) usage in last
 resort, you will need to use the argument `use_nominatim_backend=True`.
 
 ### Set vintage to cities' codes
 `french-cities` can try to project a given dataframe into a set vintage,
-starting from an unknown vintage (or even a non-vintaged dataset, which is 
+starting from an unknown vintage (or even a non-vintaged dataset, which is
 often the case).
 
 Error may occur for splitted cities as the starting vintage is unknown
@@ -190,7 +201,7 @@ Error may occur for splitted cities as the starting vintage is unknown
 
 In case of a known starting vintage, you can make use of
 INSEE's projection API (with `pynsee`). Note that this might prove slower as
-each row will have to induce a request to the API (which allows up to 
+each row will have to induce a request to the API (which allows up to
 30 requests/minute).
 
 Basically, the algorithm of `french-cities` will try to see if a given city
@@ -224,7 +235,7 @@ df = set_vintage(df, 2023, field="A")
 print(df)
 ```
 
-For a complete documentation on `set_vintage`, please type 
+For a complete documentation on `set_vintage`, please type
 `help(set_vintage)`.
 
 ## External documentation
@@ -239,7 +250,7 @@ For a complete documentation on `set_vintage`, please type
 In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
 
 ## Contribution
-Any help is welcome.
+Any help is welcome. Please refer to the [CONTRIBUTING file](./CONTRIBUTING.md).
 
 ## Author
 Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Durable et Évaluation Environnementale, pôle Promotion de la Connaissance).

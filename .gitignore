@@ -162,3 +162,4 @@ cython_debug/
 
 *.sqlite
 docs/Gemfile.lock
+reports/flake8/flake8stats.txt

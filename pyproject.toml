@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "french-cities"
-version = "1.0.3"
+version = "1.1.0"
 description = "Toolbox on french cities: set vintage, find departments, find cities..."
 authors = ["thomas.grandjean <thomas.grandjean@developpement-durable.gouv.fr>"]
 license = "GPL-3.0-or-later"
@@ -28,7 +28,6 @@ python-dotenv = "^1.0.0"
 pandas = "^2.2.2"
 geopandas = "^1.0.1"
 rapidfuzz = "^3.1.1"
-pynsee = "0.1.7"
 pebble = "^5.0.3"
 tqdm = "^4.65.0"
 importlib-metadata = "^6.8.0"
@@ -36,8 +35,7 @@ geopy = "^2.3.0"
 diskcache = "^5.6.3"
 platformdirs = "^4.2.2"
 setuptools = "^75.8.0"
-requests-ratelimiter = "^0.7.0"
-tenacity = "^9.0.0"
+pynsee = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 spyder = "^6.0.3"
@@ -50,6 +48,13 @@ openpyxl = "^3.1.4"
 spyder-notebook = "^0.6.1"
 matplotlib = "^3.9.0"
 seaborn = "^0.13.2"
+vulture = "^2.14"
+pytest-cov = "^6.0.0"
+genbadge = {extras = ["all"], version = "^1.1.1"}
+flake8 = "^7.1.1"
+pre-commit = "^4.1.0"
+black = "^25.1.0"
+ipywidgets = "^8.1.5"
 
 
 [tool.pytest.ini_options]
@@ -57,10 +62,17 @@ log_cli = true
 log_cli_level = "WARNING"
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
+addopts = "--cov-report xml:./reports/coverage/coverage.xml"
 
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    ]
 
+[tool.black]
+include = '\.py$'
+line-length = 79
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-

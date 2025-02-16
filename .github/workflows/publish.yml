@@ -1,6 +1,6 @@
 name: publish
 
-on: 
+on:
   push:
     tags:
       - v**
@@ -13,7 +13,9 @@ jobs:
       #       check-out repo and set-up python
       #----------------------------------------------
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: Set up python
         id: setup-python
         uses: actions/setup-python@v4
@@ -44,28 +46,38 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --without dev
-        
-      #----------------------------------------------
-      # add only pytest for tests (not the full dev dependencies to avoid installing spyder)
-      #----------------------------------------------
-      - name: Add pytest
-        run: poetry run pip install pytest
-      
-      #----------------------------------------------
-      # add only pytest-cov for tests (not the full dev dependencies to avoid installing spyder)
-      #----------------------------------------------
-      - name: Add pytest-cov
-        run: poetry run pip install pytest-cov
 
       #----------------------------------------------
-      #              run test suite
+      # add pytest suite (not the full dev dependencies to avoid installing spyder)
       #----------------------------------------------
-      - name: Run tests
-        env:
-          insee_key: ${{secrets.INSEE_KEY}}
-          insee_secret: ${{secrets.INSEE_SECRET}}
-        run: poetry run pytest --cov -s
-        
+      - name: Add pytest pytest-cov genbadge[all] flake8 black
+        run: poetry run pip install pytest pytest-cov genbadge[all] flake8 black
+
+      - name: flake8 check & badge
+        run: |
+          poetry run flake8 --config .flake8 --output-file ./reports/flake8/flake8stats.txt
+          poetry run genbadge flake8 -o ./badges/flake8-badge.svg
+
+      - name: run black
+        run: |
+          poetry run black . --config pyproject.toml
+
+      - name: Run tests and generate coverage badge
+        run: |
+          poetry run pytest --cov-config pyproject.toml --cov
+          poetry run genbadge coverage -o ./badges/coverage-badge.svg
+
+      - name: Commit changes
+        continue-on-error: true
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "22030685+tgrandje@users.noreply.github.com"
+          git add ./badges/flake8-badge.svg
+          git add ./badges/coverage-badge.svg
+          git commit -m "add badges"
+          git push
+
+
   publish:
     runs-on: ubuntu-latest
     needs: test
@@ -74,7 +86,7 @@ jobs:
       #       check-out repo and set-up python
       #----------------------------------------------
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up python
         id: setup-python
         uses: actions/setup-python@v4
@@ -105,25 +117,25 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root --without dev --extras "full"
-        
+
       #----------------------------------------------
       # install your root project, if required
       #----------------------------------------------
       - name: Install project
         run: poetry install --no-interaction --without dev
-      
+
       #----------------------------------------------
       # config pypi token
       #----------------------------------------------
       - name: Set pypi token
         run: poetry config pypi-token.pypi ${{secrets.PYPI_TOKEN}}
-        
+
       #----------------------------------------------
       # build
       #----------------------------------------------
       - name: Build
         run: poetry build
-      
+
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------

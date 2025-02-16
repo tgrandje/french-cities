@@ -23,7 +23,7 @@ ouverts) historiques : parfois compilés sur plusieurs années, les codes
 communes ont été saisis "à date" lors de la création d'une entité dans la base
 et jamais tenus à jour.
 
-Dans cet exemple, nous allons nous intéresser aux 
+Dans cet exemple, nous allons nous intéresser aux
 [sites pollués gérés par l'ADEME](https://data.ademe.fr/datasets/srd-ademe).
 
 
