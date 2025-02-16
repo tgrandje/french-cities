@@ -270,7 +270,7 @@ def _process_departements_from_postal(
         last_resort_results = _process_departements_from_insee_code(
             postal_codes_missing,
             source=source,
-            alias="dep",
+            alias=alias,
             session=session,
             do_set_vintage=False,
             threads=threads,
