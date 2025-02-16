@@ -3,10 +3,8 @@
 Created on Tue Jul 11 09:20:26 2023
 """
 from unittest import TestCase
-from unittest.mock import patch
 import pandas as pd
 import numpy as np
-from requests import session
 
 from french_cities.city_finder import find_city
 
