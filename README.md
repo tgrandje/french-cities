@@ -2,13 +2,18 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/french-cities)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/french-cities)](https://pypi.python.org/pypi/french-cities/)
+
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![flake8 checks](https://raw.githubusercontent.com/tgrandje/french-cities/refs/heads/main/badges/flake8-badge.svg)
 ![Test Coverage](https://raw.githubusercontent.com/tgrandje/french-cities/refs/heads/main/badges/coverage-badge.svg)
+
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/tgrandje/french-cities)
 ![GitHub commits since latest release](https://img.shields.io/github/commits-since/tgrandje/french-cities/latest)
+
 ![Monthly Downloads](https://img.shields.io/pypi/dm/french-cities)
 ![Total Downloads](https://img.shields.io/pepy/dt/french-cities)
+![Conda Downloads](https://img.shields.io/conda/d/conda-forge/french-cities)
+
 
 This repo contains the documentation of the python french-cities package, a
 package aimed at improving the referencing of municipalities in French 🇫🇷
@@ -37,7 +42,13 @@ Do you have any data:
 
 # Installation
 
+## pip
+
 `pip install french-cities`
+
+## conda
+
+See [french-cities' feedstock](https://github.com/conda-forge/french-cities-feedstock?tab=readme-ov-file#installing-french-cities).
 
 # Configuration
 
@@ -253,13 +264,13 @@ For a complete documentation on `set_vintage`, please type
 In case of bugs, please open an issue [on the repo](https://github.com/tgrandje/french-cities/issues).
 
 ## Contribution
-Any help is welcome. Please refer to the [CONTRIBUTING file](./CONTRIBUTING.md).
+Any help is welcome. Please refer to the [CONTRIBUTING file](https://github.com/tgrandje/french-cities/blob/main/CONTRIBUTING.md).
 
 ## Author
 Thomas GRANDJEAN (DREAL Hauts-de-France, service Information, Développement Durable et Évaluation Environnementale, pôle Promotion de la Connaissance).
 
 ## Licence
-GPL-3.0-or-later
+[GPL-3.0-or-later](https://github.com/tgrandje/french-cities/blob/main/LICENSE.md)
 
 ## Project Status
 Stable.
