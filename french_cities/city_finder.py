@@ -373,8 +373,12 @@ def find_city(
     components_kept = list(
         {field for test_cols, _ in to_test_ok for field in test_cols}
     )
+
+    init = pd.get_option("future.no_silent_downcasting")
+    pd.set_option("future.no_silent_downcasting", True)
     for f in components_kept:
         df[f] = df[f].replace("", np.nan)
+    pd.set_option("future.no_silent_downcasting", init)
 
     addresses = df.loc[:, components_kept + ["candidat_0"]].drop_duplicates()
 
