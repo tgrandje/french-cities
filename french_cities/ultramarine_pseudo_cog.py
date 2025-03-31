@@ -69,11 +69,6 @@ def _get_ultramarines_cities(
     )
     if date == "*":
         date = set_default_date()
-        warning = (
-            f"get_descending_area with {area=} does not support date='*': "
-            f"querying for {date=} instead"
-        )
-        logger.warning(warning)
     if not date:
         date = set_default_date()
 

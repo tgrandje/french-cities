@@ -6,6 +6,7 @@ Module used to recognize cities.
 
 """
 from datetime import date, timedelta
+from functools import lru_cache
 import hashlib
 import io
 import logging
@@ -623,6 +624,15 @@ def _combine(df: pd.DataFrame, columns: list) -> pd.Series:
     return s
 
 
+@lru_cache(maxsize=None)
+def warn_nominatim():
+    logger.warning(
+        "Usage of Nominatim for geocoding is **NOT** encouraged. "
+        "Please, have a look at the Geocoding Policy at "
+        "https://operations.osmfoundation.org/policies/nominatim/ . "
+    )
+
+
 def _find_with_nominatim_geolocation(
     year: str,
     look_for: pd.DataFrame,
@@ -657,11 +667,7 @@ def _find_with_nominatim_geolocation(
 
     """
 
-    logger.warning(
-        "Usage of Nominatim for geocoding is **NOT** encouraged. "
-        "Please, have a look at the Geocoding Policy at "
-        "https://operations.osmfoundation.org/policies/nominatim/ . "
-    )
+    warn_nominatim()
     try:
         geolocator = Nominatim(user_agent=get_machine_user_agent())
     except NameError:
