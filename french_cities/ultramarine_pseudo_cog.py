@@ -19,7 +19,6 @@ from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.constants import THREADS
-from french_cities.utils import silence_sirene_logs
 
 logger = logging.getLogger(__name__)
 
