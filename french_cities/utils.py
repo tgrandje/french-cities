@@ -32,7 +32,7 @@ def silence_sirene_logs(func):
             and not record.msg.startswith(
                 "Remember to subscribe to SIRENE API"
             )
-            # no results, but switch with a more accurate log entry in
+            # no results, but switch to a more accurate log entry in
             # french-cities context:
             and record.msg != "No data found !"
             and not not record.msg.startswith(
@@ -42,9 +42,15 @@ def silence_sirene_logs(func):
 
     def wrapper(*args, **kwargs):
         # Note: deactivate pynsee log to substitute by a more accurate
-        pynsee_logs = "_get_credentials", "requests_session", "init_connection"
+        pynsee_logs = (
+            "pynsee.utils._get_credentials",
+            "pynsee.utils.requests_session",
+            "pynsee.utils.init_connection",
+            "pynsee.localdata.get_descending_area",
+        )
         for log in pynsee_logs:
-            pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+            pynsee_log = logging.getLogger(log)
+            pynsee_log.propagate = False
             pynsee_log.addFilter(filter_no_credential_or_no_results)
         try:
             return func(*args, **kwargs)
@@ -52,7 +58,8 @@ def silence_sirene_logs(func):
             raise
         finally:
             for log in pynsee_logs:
-                pynsee_log = logging.getLogger(f"pynsee.utils.{log}")
+                pynsee_log = logging.getLogger(log)
+                pynsee_log.propagate = True
                 pynsee_log.removeFilter(filter_no_credential_or_no_results)
 
     return wrapper

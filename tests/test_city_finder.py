@@ -2,11 +2,18 @@
 """
 Created on Tue Jul 11 09:20:26 2023
 """
+import os
 from unittest import TestCase
+from requests import Session
 import pandas as pd
 import numpy as np
 
-from french_cities.city_finder import find_city
+import logging
+
+from french_cities.city_finder import (
+    find_city,
+    _query_BAN_csv_geocoder,
+)
 
 input_df = pd.DataFrame(
     [
@@ -191,11 +198,16 @@ class MockedResponse:
 
 
 class MockedSession:
+    adapters = {}
+
     def post(self, *args, **kwargs):
         return MockedResponse()
 
     def get(self, *args, **kwargs):
         return MockedResponse()
+
+    def mount(self, *args, **kwargs):
+        return
 
 
 output_df = find_city(
@@ -287,3 +299,48 @@ class test_find_city(TestCase):
         )
 
         self.assertRaises(ValueError, find_city, df=df, epsg=None)
+
+    def test_BAN(self):
+        to_test = [
+            (("postcode", "city"), "municipality"),
+            (("address", "postcode", "city"), None),
+            (("dep", "city"), "municipality"),
+        ]
+
+        session = Session()
+        proxies = {}
+        proxies["http"] = os.environ.get("http_proxy", None)
+        proxies["https"] = os.environ.get("https_proxy", None)
+        session.proxies.update(proxies)
+
+        addresses = input_df.copy()
+
+        def list_map(df, columns):
+            # contatenation of multiple columns
+            "https://stackoverflow.com/questions/39291499#answer-62135779"
+            return pd.Series(
+                map(" ".join, df[list(columns)].values.tolist()),
+                index=df.index,
+            )
+
+        logging.warning(addresses.columns)
+        for k, (components, type_ban_search) in enumerate(to_test):
+            temp_add = addresses.copy()
+
+            temp_add = temp_add.join(
+                list_map(addresses.fillna("").copy(), components).to_frame(
+                    "full"
+                )
+            )
+
+            _query_BAN_csv_geocoder(
+                temp_add,
+                components=components,
+                session=session,
+                dep="dep",
+                city="city",
+            )
+
+
+if __name__ == "__main__":
+    test_find_city().test_BAN()
