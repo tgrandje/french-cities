@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from french_cities import DIR_CACHE
 from french_cities.constants import THREADS
+from french_cities.utils import silence_sirene_logs
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ def _get_ultramarines_cities(
             f"get_descending_area with {area=} does not support date='*': "
             f"querying for {date=} instead"
         )
-        logging.warning(warning)
+        logger.warning(warning)
     if not date:
         date = set_default_date()
 
