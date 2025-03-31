@@ -471,6 +471,7 @@ def find_city(
             components=components,
             session=session,
             dep=dep,
+            city="city_cleaned",
         )
         addresses = _filter_BAN_results(
             results_api=results_api,
@@ -1019,6 +1020,7 @@ def _query_BAN_csv_geocoder(
     components: list,
     session: Session,
     dep: str,
+    city: str,
 ) -> pd.DataFrame:
     """
     Query the adresse API (BAN = Base Adresse Nationale) CSV geocoder.
@@ -1034,6 +1036,8 @@ def _query_BAN_csv_geocoder(
         Web session
     dep : str
         Column label containing the departements' codes
+    city : str
+        Column label containing the cities' labels
 
     Returns
     -------
@@ -1047,13 +1051,17 @@ def _query_BAN_csv_geocoder(
 
     files = [
         ("data", addresses.to_csv(index=False)),
-        ("type", (None, "municipality")),
+        # erratic behaviour of BAN API, deactivate type filtering for now
+        # ("type", (None, "municipality")),
         ("result_columns", (None, "full")),
         ("result_columns", (None, "result_score")),
         ("result_columns", (None, "result_city")),
         ("result_columns", (None, "result_citycode")),
+        ("result_columns", (None, "result_type")),
     ]
 
+    # awaiting new API managed by IGN
+    # see https://guides.data.gouv.fr/reutiliser-des-donnees/prendre-en-main-lapi-adresse-portee-par-lign#utilisation-de-lapi-adresse-portee-par-lign-et-les-differences-avec-lapi-adresse-portee-par-la-dinum
     r = session.post(
         "https://api-adresse.data.gouv.fr/search/csv/",
         files=files,
@@ -1077,7 +1085,7 @@ def _query_BAN_csv_geocoder(
                 ["full", "result_score", "result_city", "result_citycode"],
             ]
             .merge(
-                addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
+                addresses[[dep, "full", city]].drop_duplicates(),
                 on="full",
             )
         )
@@ -1131,7 +1139,7 @@ def _query_BAN_individual_geocoder(
 
     def get(x):
         r = session.get(
-            "https://api-adresse.data.gouv.fr/search/",
+            "https://data.geopf.fr/geocodage/search/",
             params={
                 "q": x,
                 "type": "municipality",
