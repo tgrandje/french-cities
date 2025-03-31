@@ -4356,15 +4356,15 @@ tests = ["hypothesis (>=3.27.0)", "pytest (>=3.2.1,!=3.3.0)"]
 
 [[package]]
 name = "pynsee"
-version = "0.2.0"
+version = "0.2.1"
 description = "Tools to Easily Search and Download French Data From INSEE and IGN APIs."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version <= \"3.11\" or python_version >= \"3.12\""
 files = [
-    {file = "pynsee-0.2.0-py3-none-any.whl", hash = "sha256:74a9e5a78b29dc01096dd120b3ab7f5fabd61f726dd7bc7e422d36473bf05716"},
-    {file = "pynsee-0.2.0.tar.gz", hash = "sha256:fc7af5370ecbf7a8ea08f4a247e37a46d91bac5dd7191da627c602fd5661118e"},
+    {file = "pynsee-0.2.1-py3-none-any.whl", hash = "sha256:c6b231923dfdfa6c9029bebc4877f222b9b36e375ba100121e60cf16e85ec158"},
+    {file = "pynsee-0.2.1.tar.gz", hash = "sha256:a7c891c63071f75d4237067133364d5fa8dfc47e36a0da10702a578b977d9e53"},
 ]
 
 [package.dependencies]
@@ -7140,4 +7140,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "eff543c6a787d4a5171e392a47a9b115d65a686333d0b46a24876e3dcd863c8d"
+content-hash = "daf7eaf6100d924cbe61130574f0cabbafaaaf457ffe72126315eef370347dac"
