@@ -374,8 +374,12 @@ def find_city(
     components_kept = list(
         {field for test_cols, _ in to_test_ok for field in test_cols}
     )
+
+    init = pd.get_option("future.no_silent_downcasting")
+    pd.set_option("future.no_silent_downcasting", True)
     for f in components_kept:
         df[f] = df[f].replace("", np.nan)
+    pd.set_option("future.no_silent_downcasting", init)
 
     addresses = df.loc[:, components_kept + ["candidat_0"]].drop_duplicates()
 
@@ -549,6 +553,9 @@ def find_city(
         logger.info("Retrieving adminexpress geodataframes with pynsee")
         cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
         cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
+
+        # Hack as the original dataset has evolved (insee_com -> code_insee)
+        cities = cities.rename({"code_insee": "insee_com"}, axis=1)
         logger.info("done")
 
         for use in [postcode, dep]:
@@ -998,6 +1005,9 @@ def _find_from_geoloc(
     if cities is None:
         cities = get_geodata("ADMINEXPRESS-COG-CARTO.LATEST:commune")
         cities = gpd.GeoDataFrame(cities).set_crs("EPSG:3857")
+
+        # Hack as the original dataset has evolved (insee_com -> code_insee)
+        cities = cities.rename({"code_insee": "insee_com"}, axis=1)
 
     transformer = Transformer.from_crs(epsg, 3857, accuracy=1, always_xy=True)
 
