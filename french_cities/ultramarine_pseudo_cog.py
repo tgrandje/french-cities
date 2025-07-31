@@ -177,9 +177,18 @@ def get_departements_and_ultramarines(date=None, update=None):
     ultramarine = get_area_list(
         "collectivitesDOutreMer", date, update, silent=True
     )
-    ultramarine = ultramarine.sort_values(["CODE", "DATE_CREATION"])
+    ultramarine = (
+        ultramarine.sort_values(["TITLE", "DATE_CREATION"], ascending=False)
+        .drop_duplicates("TITLE", keep="first")
+        .reset_index()
+    )
 
     deps = get_area_list("departements", date, update, silent=True)
     deps = deps.drop("chefLieu", axis=1)
     full = pd.concat([ultramarine, deps], ignore_index=True)
+    full = (
+        full.sort_values(["TITLE", "DATE_CREATION"], ascending=False)
+        .drop_duplicates("TITLE", keep="first")
+        .reset_index()
+    )
     return full
