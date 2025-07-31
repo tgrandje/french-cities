@@ -351,7 +351,8 @@ def _process_departements_from_insee_code(
 
     """
     init_pynsee()
-    deps = get_departements_and_ultramarines(date="*").rename(
+    this_date = f"{date.today().year}-01-01"
+    deps = get_departements_and_ultramarines(date=this_date).rename(
         {"CODE": "#DEP_CODE#"}, axis=1
     )
     deps = deps[["#DEP_CODE#"]].drop_duplicates(keep="first")
@@ -407,7 +408,8 @@ def _find_departements_from_names(
     """
 
     init_pynsee()
-    candidates = get_departements_and_ultramarines("*")
+    this_date = f"{date.today().year}-01-01"
+    candidates = get_departements_and_ultramarines(this_date)
     candidates = candidates[["CODE", "TITLE"]].drop_duplicates()
     candidates["TITLE"] = (
         candidates["TITLE"]
@@ -431,7 +433,7 @@ def _find_departements_from_names(
             x,
             candidates_keys,
             scorer=fuzz.ratio,
-            score_cutoff=80,
+            score_cutoff=85,
         )
         try:
             return candidates[results[0]]
