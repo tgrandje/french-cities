@@ -352,7 +352,7 @@ def _get_parents_from_serie(
 
     desc = "Get parent from insee"
     with ThreadPool(threads) as pool:
-        # note: there's a rate limiter built-in pynsee, so this is safe
+        # note: there's a built-in rate limiter in pynsee, so this is safe
         future = pool.map(func, codes)
         results = future.result()
         parents = list(tqdm(results, total=len(codes), desc=desc, leave=False))
@@ -596,7 +596,7 @@ def set_vintage(
 
     desc = "Looking for projections from past"
     with ThreadPool(threads) as pool:
-        # note: there's a rate limiter built-in pynsee, so this is safe
+        # note: there's a built-in rate limiter in pynsee, so this is safe
         future = pool.map(partial_get_city, uniques.loc[ix, field].tolist())
         results = future.result()
         projected = list(tqdm(results, total=len(ix), desc=desc, leave=False))
