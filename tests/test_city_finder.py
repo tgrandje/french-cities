@@ -339,6 +339,7 @@ class test_find_city(TestCase):
                 session=session,
                 dep="dep",
                 city="city",
+                type_ban_search=type_ban_search,
             )
 
 
