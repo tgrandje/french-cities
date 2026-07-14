@@ -20,7 +20,6 @@ import diskcache
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from pebble import ThreadPool
 from pynsee.geodata import get_geodata
 from pyproj import Transformer
 from requests_cache import CachedSession
@@ -477,6 +476,7 @@ def find_city(
             session=session,
             dep=dep,
             city="city_cleaned",
+            type_ban_search=type_ban_search,
         )
         addresses = _filter_BAN_results(
             results_api=results_api,
@@ -504,26 +504,6 @@ def find_city(
                     )
                     & (addresses[f"candidat_{k+1}"].isnull())
                 ].index
-
-                if len(ix) > 0:
-                    # Try to use individual geocoding specifying target type
-                    # (ie. "municipality" to get better results)
-
-                    results_api = _query_BAN_individual_geocoder(
-                        addresses=addresses.loc[ix],
-                        components=components,
-                        session=session,
-                        dep=dep,
-                        threads=threads,
-                    )
-                    addresses = _filter_BAN_results(
-                        results_api=results_api,
-                        session=session,
-                        rename_candidat=f"candidat_{k+1}",
-                        addresses=addresses,
-                        dep=dep,
-                        threads=threads,
-                    )
 
     # Proceed in two steps to keep best result (in case there are results from
     # geolocation on lines with nothing other than coordinates)
@@ -1037,6 +1017,7 @@ def _query_BAN_csv_geocoder(
     session: Session,
     dep: str,
     city: str,
+    type_ban_search: Union[str, None] = None,
 ) -> pd.DataFrame:
     """
     Query the adresse API (BAN = Base Adresse Nationale) CSV geocoder.
@@ -1054,6 +1035,9 @@ def _query_BAN_csv_geocoder(
         Column label containing the departements' codes
     city : str
         Column label containing the cities' labels
+    type_ban_search : Union[str, None]
+        BAN's targeted type. Any of 'municipality','street','locality',
+        'housenumber' or None. Default is None (resulting to no filtering)
 
     Returns
     -------
@@ -1062,32 +1046,54 @@ def _query_BAN_csv_geocoder(
         'result_citycode'])
 
     """
+    authorized = {"municipality", "street", "locality", "housenumber", None}
+    if type_ban_search not in authorized:
+        msg = (
+            f"type_ban_search should be among {authorized}, found "
+            f"'{type_ban_search}' instead"
+        )
+        raise ValueError(msg)
+
     # Use the BAN's CSV geocoder
     logger.info("request BAN with CSV geocoder and %s...", components)
 
-    files = [
-        ("data", addresses.to_csv(index=False)),
-        # erratic behaviour of BAN API, deactivate type filtering for now
-        # ("type", (None, "municipality")),
-        ("result_columns", (None, "full")),
-        ("result_columns", (None, "result_score")),
-        ("result_columns", (None, "result_city")),
-        ("result_columns", (None, "result_citycode")),
-        ("result_columns", (None, "result_type")),
-    ]
+    if type_ban_search:
+        addresses["#BAN_TYPE#"] = "municipality"
 
-    # awaiting new API managed by IGN
-    # see https://guides.data.gouv.fr/reutiliser-des-donnees/prendre-en-main-lapi-adresse-portee-par-lign#utilisation-de-lapi-adresse-portee-par-lign-et-les-differences-avec-lapi-adresse-portee-par-la-dinum
+    file = io.BytesIO()
+    file.write(addresses.to_csv(encoding="utf-8", index=False).encode())
+    file.seek(0)
+
+    # swagger on https://www.data.gouv.fr/dataservices/api-adresse-base-adresse-nationale-ban
+    data = {
+        "result_columns": [
+            "full",
+            "result_score",
+            "result_city",
+            "result_citycode",
+            "result_type",
+        ],
+        "columns": ["full"],
+    }
+    if type_ban_search:
+        data["type"] = "#BAN_TYPE#"
+
     r = session.post(
-        "https://api-adresse.data.gouv.fr/search/csv/",
-        files=files,
+        "https://data.geopf.fr/geocodage/search/csv/",
+        files={"data": ("file", file)},
+        data=data,
     )
     if not r.ok:
         raise Exception(
-            f"Failed to query BAN's API with {files=} - response was {r}"
+            "Failed to query BAN's API with file="
+            f"{addresses.to_csv(encoding='utf-8', index=False)} - "
+            f"response was {r}"
         )
 
     logger.info("résultat obtenu")
+
+    if type_ban_search:
+        addresses = addresses.drop("#BAN_TYPE#", axis=1)
 
     try:
         results_api = (
@@ -1110,109 +1116,6 @@ def _query_BAN_csv_geocoder(
             "Failed to parse BAN's return with following content :\n\n"
             f"{r.content}"
         ) from exc
-    return results_api
-
-
-def _query_BAN_individual_geocoder(
-    addresses: pd.DataFrame,
-    components: list,
-    session: Session,
-    dep: str,
-    threads: int = THREADS,
-) -> pd.DataFrame:
-    """
-    Query the adresse API (BAN = Base Adresse Nationale) individual geocoder,
-    specifying the output type as municipality (this parameter being not
-    available through the CSV mass geocoder). Uses multithreading as no
-    quota are not used by this API.
-
-    Parameters
-    ----------
-    addresses : pd.DataFrame
-        Addresses to query the API from.
-    components : list
-        List of components used for constituting the addresses (used for
-        debugging purposes only)
-    session : Session
-        Web session
-    dep : str
-        Column label containing the departements' codes
-    threads : int, optional
-        Number of threads to use. Default is 10.
-
-    Returns
-    -------
-    results_api : pd.DataFrame
-        DataFrame (same as original + columns ['result_score', 'result_city',
-        'result_citycode'])
-
-    """
-    # Use the BAN's individual geocoder
-
-    # revert to multiple queries of BAN, see issue here:
-    # https://github.com/BaseAdresseNationale/adresse.data.gouv.fr/issues/1575
-    logger.info("request BAN with individual requests and %s...", components)
-
-    def get(x):
-        r = session.get(
-            "https://data.geopf.fr/geocodage/search/",
-            params={
-                "q": x,
-                "type": "municipality",
-                "autocomplete": 0,
-                "limit": 1,
-            },
-        ).json()
-        try:
-            features = r["features"]
-        except KeyError:
-            logger.error("query was q=%s", x)
-            logger.error(r)
-            raise
-
-        try:
-            query = r["query"]
-        except KeyError:
-            query = x
-        for dict_ in features:
-            dict_["properties"].update({"full": query})
-
-        return features
-
-    args = addresses.full.str.replace(r"\W+", " ", regex=True).tolist()
-    results = []
-    with tqdm(total=len(args), desc="Queuing download", leave=False) as pbar:
-        with ThreadPool(threads) as pool:
-            future = pool.map(get, args)
-            results_iterator = future.result()
-            while True:
-                try:
-                    this_result = next(results_iterator)
-                    if this_result:
-                        results.append(this_result)
-                except StopIteration:
-                    break
-                finally:
-                    pbar.update(1)
-
-    logger.info("results collected")
-
-    results_api = (
-        gpd.GeoDataFrame.from_features(np.array(results).flatten())
-        .loc[:, ["full", "score", "city", "citycode"]]
-        .rename(
-            {
-                "score": "result_score",
-                "city": "result_city",
-                "citycode": "result_citycode",
-            },
-            axis=1,
-        )
-        .merge(
-            addresses[[dep, "full", "city_cleaned"]].drop_duplicates(),
-            on="full",
-        )
-    )
     return results_api
 
 
