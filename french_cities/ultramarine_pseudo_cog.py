@@ -100,7 +100,7 @@ def _get_ultramarines_cities(
 
     desc = "Get descending area for ultra-marine territories"
     with ThreadPool(threads) as pool:
-        # note: there's a rate limiter built-in pynsee, so this is safe
+        # note: there's a built-in rate limiter in pynsee, so this is safe
         future = pool.map(get_descending, um["CODE"])
         results = future.result()
         cities = list(tqdm(results, total=len(um), desc=desc, leave=False))
