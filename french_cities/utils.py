@@ -96,4 +96,4 @@ def init_pynsee():
     kwargs = {x: os.environ[x] for x in keys if x in os.environ}
     kwargs["sirene_key"] = None
 
-    init_conn(**kwargs)
+    init_conn(**kwargs, raise_if_not_ok=False)
