@@ -98,6 +98,7 @@ def _process_departements_from_postal(
     )
 
     r = session.get(url)
+
     base = pd.read_parquet(io.BytesIO(r.content))
     base = base[["code_commune_insee", "code_postal"]]
     base = _process_departements_from_insee_code(
