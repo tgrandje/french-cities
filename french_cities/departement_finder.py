@@ -29,7 +29,6 @@ from french_cities.ultramarine_pseudo_cog import (
 )
 from french_cities.vintage import set_vintage
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -92,25 +91,23 @@ def _process_departements_from_postal(
     df["#CachedResult#"] = df[source].apply(cache_departments.get)
 
     # Download official postcodes dataset from API
-    # https://datanova.laposte.fr/datasets/laposte-hexasmal
+    # https://data.laposte.fr/datasets/laposte-hexasmal
     url = (
-        "https://datanova.laposte.fr/data-fair/api/v1/datasets/"
-        "laposte-hexasmal/raw"
+        "https://data.laposte.fr/data-fair/api/v1/datasets/laposte-hexasmal/"
+        "metadata-attachments/base-officielle-codes-postaux.parquet"
     )
 
     r = session.get(url)
-    base = pd.read_csv(
-        io.BytesIO(r.content), sep=";", encoding="cp1252", dtype=str
-    )
-    base = base[["#Code_commune_INSEE", "Code_postal"]]
+    base = pd.read_parquet(io.BytesIO(r.content))
+    base = base[["code_commune_insee", "code_postal"]]
     base = _process_departements_from_insee_code(
         base,
-        "#Code_commune_INSEE",
+        "code_commune_insee",
         alias,
         do_set_vintage=False,
         threads=threads,
     )
-    base = base[["Code_postal", alias]].rename({"Code_postal": source}, axis=1)
+    base = base[["code_postal", alias]].rename({"code_postal": source}, axis=1)
     base = base.drop_duplicates(keep="first")
 
     ix = df[df["#CachedResult#"].isnull()].index
