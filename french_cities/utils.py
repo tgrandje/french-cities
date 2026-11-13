@@ -92,7 +92,7 @@ def init_pynsee():
     """
     Initiate an INSEE API connection with proxies.
     """
-    keys = ["http_proxy", "https_proxy", "no_proxy"]
+    keys = ["http_proxy", "https_proxy"]
     kwargs = {x: os.environ[x] for x in keys if x in os.environ}
     kwargs.update(
         {x: os.environ[x.upper()] for x in keys if x.upper() in os.environ}
