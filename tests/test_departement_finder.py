@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from unittest import TestCase
+import io
 import pandas as pd
 
 
@@ -48,12 +49,14 @@ input_df3 = pd.DataFrame(
 class MockedHexasmalResponse:
     ok = True
     content = (
-        b"#Code_commune_INSEE;Nom_de_la_commune;Code_postal;Libell\xc3\xa9_d_acheminement;Ligne_5\r\n"
-        b"59350;LILLE;59800;LILLE;\r\n"
-        b"97209;FORT DE FRANCE;97200;FORT DE FRANCE;\r\n"
-        b"2A004;AJACCIO;20000;AJACCIO;\r\n"
-        b"97701;ST BARTHELEMY;97133;ST BARTHELEMY;\r\n"
+        "code_commune_insee;nom_de_la_commune;code_postal;libelle_d_acheminement;ligne_5;_geo_point\r\n"
+        "59350;LILLE;59800;LILLE;;50.631080600000004,3.04684015\r\n"
+        "97209;FORT DE FRANCE;97200;FORT DE FRANCE;;14.64924555,-61.0686332\r\n"
+        "2A004;AJACCIO;20000;AJACCIO;;41.922694,8.705767250000001\r\n"
+        "97701;ST BARTHELEMY;97133;ST BARTHELEMY;;\r\n"
     )
+    df = pd.read_csv(io.StringIO(content), sep=";", dtype="str")
+    content = df.to_parquet()
 
 
 class MockedResponse:
